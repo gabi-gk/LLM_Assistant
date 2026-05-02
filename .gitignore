@@ -1,4 +1,4 @@
-# model weights — too large for git
+# model weights 
 models/
 
 # database and runtime data
@@ -16,7 +16,7 @@ __pycache__/
 llm-env/
 *.egg-info/
 
-# environment and secrets
+# environment
 .env
 .env.*
 
