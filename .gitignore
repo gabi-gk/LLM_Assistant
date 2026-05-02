@@ -1,0 +1,23 @@
+# model weights — too large for git
+models/
+
+# database and runtime data
+data/chroma/
+data/logs/
+data/active_reminders.json
+data/session_state.json
+
+# python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+llm-env/
+*.egg-info/
+
+# environment and secrets
+.env
+.env.*
+
+# VS Code
+.vscode/
