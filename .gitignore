@@ -4,6 +4,7 @@ models/
 # database and runtime data
 data/chroma/
 data/logs/
+data/information/
 data/active_reminders.json
 data/session_state.json
 
