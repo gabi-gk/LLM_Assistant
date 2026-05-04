@@ -1,10 +1,22 @@
+'''
+- loads the pre-trained LLM and tokennizer
+- generates responses from the model given the conversation history and system prompt
+- creates a TextStreamer for streaming the model's output as it's generated
+'''
+
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig, TextStreamer
 import torch
 from config import BASE_MODEL
 
 def load_model(model_name=BASE_MODEL):
+    '''
+    load the pre-trained model and its tokenizer with 4-bit quantization for efficiency
+
+    model_name: path to the pre-trained model, can be a local path or a HuggingFace repo name
+    returns the loaded model and tokenizer
+    '''
     # load the pre-trained model and its tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(model_name)# text to numbers 
+    tokenizer = AutoTokenizer.from_pretrained(model_name) # text to numbers 
     
     quant_config = BitsAndBytesConfig(
         load_in_4bit=True, # compress the weights from 16 pits per number to 4 bits per number
@@ -22,6 +34,16 @@ def load_model(model_name=BASE_MODEL):
     return model, tokenizer
 
 def generate_response(model, tokenizer, conversation_history, system_prompt, streamer):
+    '''
+    Get the model's response to the current conversation
+
+    model: the loaded language model
+    tokenizer: the model's tokenizer for preparing inputs and decoding outputs
+    conversation_history: list of message dicts representing the conversation so far
+    system_prompt: the core instructions and context for the model 
+    streamer: a TextStreamer instance that dictates how the model's output is presented as it generates
+    returns the model's response as a string
+    '''
     # Prepare the model input, include chat history
     prompt = tokenizer.apply_chat_template(
         [{"role": "system", "content": system_prompt}] + conversation_history,
@@ -48,4 +70,10 @@ def generate_response(model, tokenizer, conversation_history, system_prompt, str
     return tokenizer.decode(output_ids, skip_special_tokens=True).strip()
 
 def create_streamer(tokenizer):
+    '''
+    Get a TextStreamer instance for streaming the model's output as it's generated
+    tokenizer: the model's tokenizer, needed for decoding the output tokens
+
+    returns a TextStreamer instance configured to skip the prompt and special tokens
+    '''
     return TextStreamer(tokenizer, skip_prompt=True, skip_special_tokens=True)

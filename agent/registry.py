@@ -1,9 +1,33 @@
+'''
+Containts the list of tools and their descriptions for the model
+- the TOOLS dict maps tool name strings to actual functions
+- the TOOL_DESCRIPTIONS string is injected into the prompt to explain how to use the tools and their syntax
+- the tool_help function returns detailed descriptions and examples for each tool group when the model calls it
+'''
+
 from tools import (
     read_file, write_file, append_file, create_file, list_directory, find_file,
     run_command,
     send_notification, schedule_reminder, persistent_reminder,
     cancel_reminder, list_reminders, edit_reminder
 )
+
+def tool_help(group):
+    """
+    Return full descriptions and examples for a tool group
+
+    group: string name of the tool group, e.g. "file_tools"
+    returns: string description of the tools in that group, or error if group not found
+    """
+    groups = {
+        "file_tools": FILE_TOOL_DESCRIPTIONS,
+        "shell_tools": SHELL_TOOL_DESCRIPTIONS,
+        "notification_tools": NOTIFICATION_TOOL_DESCRIPTIONS,
+    }
+    if group in groups:
+        return groups[group]
+    available = ", ".join(groups.keys()) # list available groups in error message
+    return f"[ERROR] Unknown group: {group}. Available: {available}"
 
 # maps tool name strings to actual functions
 # agent loop uses this to execute tool calls by name
@@ -25,7 +49,7 @@ TOOLS = {
     "list_reminders": list_reminders,
     "edit_reminder": edit_reminder,
     # Tool help
-    "tool_help": None
+    "tool_help": tool_help
 }
 
 # Detailed descritions, injected into the prompt when requested
@@ -113,9 +137,12 @@ IMPORTANT RULES:
 
 # Main description, always injected into the prompt
 TOOL_DESCRIPTIONS = """
-You have access to external tools. Call them using:
+You have access to external tools. Call them using this exact XML-like syntax, replacing the name and arguments as needed:
 <tool>tool_name</tool>
 <args>{"argument": "value"}</args>
+
+ALWAYS use the XML format above to actually execute tools.
+If you want to use a tool, output the XML immediately - do not explain first.
 
 Avaliable tool groups - call tool_help first to see full syntax details and example:
 - file_tools: read_file, write_file, append_file, create_file, list_directory, find_file
@@ -126,17 +153,3 @@ To get help on a group:
 <tool>tool_help</tool>
 <args>{"group": "notification_tools"}</args>
 """
-
-def tool_help(group):
-    """
-    Return full descriptions and examples for a tool group
-    """
-    groups = {
-        "file_tools": FILE_TOOL_DESCRIPTIONS,
-        "shell_tools": SHELL_TOOL_DESCRIPTIONS,
-        "notification_tools": NOTIFICATION_TOOL_DESCRIPTIONS,
-    }
-    if group in groups:
-        return groups[group]
-    available = ", ".join(groups.keys())
-    return f"[ERROR] Unknown group: {group}. Available: {available}"

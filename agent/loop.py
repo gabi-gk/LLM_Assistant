@@ -1,26 +1,34 @@
+'''
+Lets the model call tools by including tool tags in the generated response
+- the respose is parsed for tool calls and arguments
+- the tool is executed and the result is fed back to the model in a tool_result tag
+- the model can then continue generating a response based on the tool result, allowing it to use multiple commands in a single request
+'''
+
 import json
 import re
 from config import DEBUG, SYSTEM_PROMPT
 from agent.registry import TOOLS, TOOL_DESCRIPTIONS, tool_help
 from core.model import generate_response
 
-
 def parse_tool_call(response):
     """
     Check if the model's response contains a tool call
-    Returns (tool_name, args_dict) or (None, None) if no tool call found
+
+    response: the raw response string from the model, which may contain tool call tags
+    returns (tool_name, args_dict) or none 
     """
-    tool_match = re.search(r'<tool>(.*?)</tool>', response, re.DOTALL)
-    args_match = re.search(r'<args>(.*?)</args>', response, re.DOTALL)
+    tool_match = re.search(r'<tool>(.*?)</tool>', response, re.DOTALL) # check for <tool> tags in the response and extract the tool name
+    args_match = re.search(r'<args>(.*?)</args>', response, re.DOTALL) # check for <args> tags and extract the JSON string of arguments
 
     if not tool_match:
         return None, None
 
-    tool_name = tool_match.group(1).strip()
+    tool_name = tool_match.group(1).strip() # extract the tool name from the tags 
     args = {}
     if args_match:
         try:
-            args = json.loads(args_match.group(1).strip())
+            args = json.loads(args_match.group(1).strip()) # parse the arguments JSON string into a dictionary
         except json.JSONDecodeError:
             return tool_name, {}
 
@@ -29,27 +37,31 @@ def parse_tool_call(response):
 
 def run_agent(model, tokenizer, conversation_history, streamer, max_turns=5):
     """
-    Agent loop — generates a response, checks for tool calls, executes them and feeds results back until no more tool calls
-    max_turns prevents infinite loops
+    Generates a response, checks for tool calls, executes them and feeds results back until no more tool calls
+    
+    model: the loaded language model
+    tokenizer: the model's tokenizer
+    conversation_history: list of dicts with 'role' and 'content' keys representing the conversation history
+    streamer: the model's streamer for token-by-token generation
+    max_turns: maximum number of tool calls before giving up and returning an error
     """
     # combine base system prompt with tool descriptions
     full_prompt = SYSTEM_PROMPT + TOOL_DESCRIPTIONS
-
+    
+    # run each time the assistant is prompted for a response
     for turn in range(max_turns):
-        response = generate_response(
+        response = generate_response( # gemerate a response from the model given the conversation history and the full prompt 
             model, tokenizer, conversation_history, full_prompt, streamer
         )
 
-        tool_name, args = parse_tool_call(response)
+        tool_name, args = parse_tool_call(response) # extract any tool call and arguments from the response
 
         if not tool_name:
-            # no tool call — this is the final response
+            # If there is no tool call, return the response to be displayed in the chat window
             return response
 
         # execute the tool
-        if tool_name == "tool_help":
-            tool_result = tool_help(**args)
-        elif tool_name not in TOOLS:
+        if tool_name not in TOOLS:
             tool_result = f"[ERROR] Unknown tool: {tool_name}"
         else:
             try:

@@ -1,0 +1,1 @@
+from tray.app import TrayApp

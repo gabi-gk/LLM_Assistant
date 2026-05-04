@@ -1,3 +1,8 @@
+'''
+- Contains the Chunker class reponsible for splitting documents into chunks for RAG indexing
+- Supports plain text, Python files (split by function/class), and PDFs (with adaptive strategies to handle different formatting)
+'''
+
 import ast
 import re
 from pathlib import Path
@@ -5,13 +10,19 @@ from pypdf import PdfReader
 from config import DEBUG
 
 class Chunker:
+    '''
+    Class responsible for splitting documents into chunks for RAG indexing
+    '''
     @staticmethod
     def chunk_text(text, filepath, chunk_size=500, overlap=50):
         """
         Split plain text into overlapping chunks to ensure text isn't lost at boundaries
 
+        text — the full text to split
+        filepath — the source file path, used for metadata in the chunk dict
         chunk_size — characters per chunk
         overlap — characters shared between adjacent chunks
+        returns a list of dicts with keys: text, source (filepath), type (text), name (filename)
         """
         chunks = []
         start = 0
@@ -28,12 +39,15 @@ class Chunker:
             start += chunk_size - overlap  # step forward with overlap
 
         return chunks
-    
+
     @staticmethod
     def chunk_python_file(filepath):
         """
         Split a .py file into function/class per chunk
         Uses AST (abstract syntax tree) so it splits on the function's actual ending
+
+        filepath — the path to the .py file
+        returns a list of dicts with keys: text, source (filepath), type (function/class/file_header), name (function/class name or filename)
         """
         chunks = []
         source = Path(filepath).read_text(encoding="utf-8")
@@ -64,7 +78,7 @@ class Chunker:
             "text": top_lines,
             "source": filepath,
             "type": "file_header",
-            "name": Path(filepath).name
+            "name": Path(filepath).name,
         })
 
         return chunks
@@ -73,6 +87,9 @@ class Chunker:
     def chunk_pdf(filepath):
         """
         Extract text from PDF using adaptive splitting — tries multiple strategies and picks the best result
+
+        filepath — the path to the PDF file
+        returns a list of dicts with keys: text, source (filepath), type (text), name (filename)
         """
         reader = PdfReader(filepath)
         full_text = ""
@@ -165,6 +182,9 @@ class Chunker:
     def check_heading(line):
         """
         Detect section headings 
+
+        line — a line of text to check
+        returns True if the line looks like a heading, False otherwise
         """
         line = line.strip()
         if not line:
@@ -176,14 +196,3 @@ class Chunker:
         if line.isupper() and 3 < len(line) < 80:
             return True
         return False
-    
-    @staticmethod
-    def chunk_dict(text, filepath, section):
-        """Helper to build a consistent chunk dict for PDF chunks."""
-        return {
-            "text": text.strip(),
-            "source": filepath,
-            "type": "text",
-            "name": Path(filepath).name,
-            "section": section
-        }

@@ -4,6 +4,7 @@ Basic tools — file read/write, notifications, shell commands (low risk)
 Agent loop — tool calling parser, confirmation system
 Tray app — always-on, hotkey, hide-on-close
 Window management tools — switch tabs, get open windows
+Discord bot API
 Conversation logger + fine-tune queue
 LoRA/SFT pipeline — adapt existing DPO setup
 Adapter versioning
@@ -70,14 +71,43 @@ EDIT tools/notifications.py - added edit_reminder
 EDIT agent/registry.py - registered edit_reminder
 EDIT agent/registry.py - reminder ID clarification, model must call list_reminders for the ID before cancel or edit
 
-KNOWN ISSUES:
-- persistent_reminder failing silently — error not surfaced to model  
-- Model verbose on tool calls — to be addressed via fine-tuning with conversation logs
-- Model sometimes calls wrong tool name before self-correcting (schedule_reminder vs scheduled_reminder)
-- Model loops on list_reminders instead of acting on reminder creation
-- Model does not always execture the command it says it will be executing
-
 02.05.2026
 EDIT agent/registry.py - lazy tool loading, base prompt now small index only
 EDIT agent/registry.py - full tool details split into FILE/SHELL/NOTIFICATION groups
 EDIT agent/loop.py - tool_help handled directly in agent loop
+
+03.05.2026
+CREATED tray/window.py - tkinter terminal-style dark chat window
+CREATED tray/app.py - system tray icon, Alt+Space hotkey, app lifecycle
+CREATED run.py - GUI entry point (main.py kept for terminal/debug use)
+CREATED core/search.py - shared RAG search logic extracted from main.py
+EDIT main.py - uses core/search.py
+EDIT tray/app.py - uses core/search.py
+
+04.05.2026
+EDIT detailed comments added
+ 
+TESTS TO DO:
+- .txt read/write
+- .py read/write
+- detailed reminder schedule testing
+- complete logging
+- session restore
+- session clear
+- lock file
+- find_file
+- RAG search on .py .txt .md .pdf
+
+KNOWN ISSUES:
+- Tool calling format inconsistent (XML vs JSON)
+- Model inputs wrong arguments occasionally (e.g. list_reminders with args)
+- Alt+Space does not toggle window close if already open
+- Tray window confirmation prompts (write_file etc) appear in terminal not in GUI
+- No way to see tool execution in tray window (confirmation is terminal only)
+- schedule reminders is not tracked in list_reminders
+
+EXTRA TASKS:
+- Hotkey definition to be added to config
+- If chat is not cleared, show the log on the app on next opening
+- change so that history saves on clear too - always save
+- move confirmation function to a separate utility script

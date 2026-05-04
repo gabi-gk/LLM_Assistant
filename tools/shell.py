@@ -1,3 +1,13 @@
+'''
+Provides a secure interface for running shell commands with risk-based gating
+    - BLOCKED: destructive commands, never runs
+    - CONFIRM: modifying commands, shows command and asks approval
+    - SAFE: read-only commands, runs directly
+- Classifies commands based on their first word
+- Uses subprocess to execute commands and capture output
+- Called by the assistant to run cmd commands
+'''
+
 import subprocess
 from pathlib import Path
 
@@ -19,12 +29,12 @@ CONFIRM_COMMANDS = {
 
 def run_command(cmd):
     """
-    Run a shell command with risk-based gating:
-    - BLOCKED: destructive commands, never runs
-    - CONFIRM: modifying commands, shows command and asks approval
-    - SAFE: read-only commands, runs directly
+    Run a shell command with risk-based gating
+
+    cmd: string of the command to run
+    returns: string of the command output
     """
-    risk = classify(cmd)
+    risk = classify(cmd) # determine the risk level of the command based on its first word
 
     if risk == "blocked":
         return f"[BLOCKED] '{cmd}' is disabled"
@@ -35,15 +45,15 @@ def run_command(cmd):
             return "[CANCELLED] Command cancelled"
 
     try:
-        result = subprocess.run(
+        result = subprocess.run( # execute the command and capture output
             cmd,
             shell=True,
             capture_output=True,
             text=True,
             timeout=30 # prevent hanging commands
         )
-        output = result.stdout
-        if result.stderr:
+        output = result.stdout # present the normal output 
+        if result.stderr: # if there is any error output, include it in the response
             output += f"\n[STDERR]\n{result.stderr}"
         return output if output.strip() else "[Command completed with no output]"
     except subprocess.TimeoutExpired:
@@ -56,6 +66,9 @@ def classify(cmd):
     """
     Classify a command as blocked, confirm or safe
     Checks the first word — the actual executable being called
+
+    cmd: string of the command to classify
+    returns: "blocked", "confirm" or "safe"
     """
     first_word = cmd.strip().split()[0].lower()
     # strip path so C:\\windows\\system32\\cmd.exe → cmd
@@ -69,5 +82,11 @@ def classify(cmd):
 
 
 def confirm(prompt):
+    """ 
+    Ask for confirmation and return true if confirmed
+
+    prompt: the confirmation message to show
+    returns True if the user confirms, False otherwise
+    """
     response = input(f"\n[CONFIRM] {prompt} (y/n): ").strip().lower()
     return response in ("y", "yes")

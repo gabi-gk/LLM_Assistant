@@ -1,19 +1,27 @@
+'''
+Manages the Retrieval-Augmented Generation (RAG) system for the assistant
+- indexes (prepares for future use and saves) supported file types (.py, .txt, .md, .json, .pdf) from a specified directory
+- uses a small embedding model to convert text into vectors for efficient similarity search
+- provides methods to index files, search for relevant chunks, and format them for inclusion in the prompt
+- uses a vector database (ChromaDB) to store embeddings of text chunks from files
+- retrieves them based on similarity to the user's query
+'''
 import os
 import chromadb
+from matplotlib import lines
 from sentence_transformers import SentenceTransformer
 from pathlib import Path
 from config import DEBUG, INFORMATION_DIR, LOGS_DIR, CHROMA_DIR, K_DEFAULT
 from core.chunking import Chunker
 
-'''
-The chunks are the data from the file the model is accessing
-Mini model vectorisies the chunks
-dbchrome stores them and later looks for ones that match current query context
-
-'''
-
 class RAG:
+    '''
+    Main class for managing the Retrieval-Augmented Generation system
+    '''
     def __init__(self):
+        '''
+        Initialize the embedding model and vector database client
+        '''
         print("[RAG] Loading embedding model...")
         # small NN that converts text into vectors
         self.embedder = SentenceTransformer("all-MiniLM-L6-v2")
@@ -28,7 +36,9 @@ class RAG:
 
     def index_file(self, filepath):
         """
-        Index a single file into the vector database
+        Index a single file into the vector database, for later retrieval based on content similarity
+
+        filepath: path to the file to be indexed
         """
         path = Path(filepath)
 
@@ -76,28 +86,30 @@ class RAG:
 
     def index_directory(self, directory):
         """
-        Index all supported files in a directory.
+        Index all supported files in a directory by calling index_file on each separately
+
+        directory: path to the directory to be indexed   
         """
         supported = {".py", ".txt", ".md", ".json", ".pdf"}
         path = Path(directory)
 
-        if not path.exists():
+        if not path.exists(): # if the directory doesn't exist, create it and prompt user to add files
             os.makedirs(path)
             print(f"[RAG] Created directory {directory} — add files here to index them.")
             return
 
-        files = [f for f in path.rglob("*") if f.suffix in supported]
+        files = [f for f in path.rglob("*") if f.suffix in supported] # find all supported files in this directory and subdirectories
 
         if not files:
             print(f"[RAG] No supported files found in {directory}")
             return
 
-        for f in files:
+        for f in files: # index each file separately to track progress and avoid memory issues with large files
             self.index_file(str(f))
 
     def index_all(self):
         """
-        Index both the notes folder and saved conversation logs
+        Index both the user's notes folder and saved conversation logs
         """
         print("[RAG] Indexing knowledge base...")
         self.index_directory(INFORMATION_DIR)
@@ -106,30 +118,33 @@ class RAG:
 
     def search(self, query, top_k=K_DEFAULT):
         """
-        Convert query to a vector, find the closest chunks in the database.
-        Returns a list of the most relevant text chunks.
+        Convert query to a vector, find the closest chunks in the database
+
+        query: the user's question or statement to find relevant context for
+        top_k: how many relevant chunks to return at most (from config)
+        Returns a list of the most relevant text chunks
         """
         if self.collection.count() == 0:
             return []
 
-        query_embedding = self.embedder.encode([query]).tolist()
+        query_embedding = self.embedder.encode([query]).tolist() # convert the query into a vector using the same model as for indexing
 
-        results = self.collection.query(
+        results = self.collection.query( # find the most similar chunks based on cosine similarity of the vectors
             query_embeddings=query_embedding,
             n_results=min(top_k, self.collection.count()),
-            include=["documents", "metadatas", "distances"]
+            include=["documents", "metadatas", "distances"] 
         )
 
         chunks = []
-        for doc, meta, dist in zip(
-            results["documents"][0],
-            results["metadatas"][0],
-            results["distances"][0]
+        for doc, meta, dist in zip( # combine the retrieved documents, their metadata, and their distance scores
+            results["documents"][0], # actual raw text that gets injected into the prompt as context
+            results["metadatas"][0], # dictionary of extra information about the chunk, source file, type, name, section etc
+            results["distances"][0] # distance score from the query vector and the chunk vector, lower = more similar
         ):
-            # distance is 0-2 with cosine, convert to 0-1 similarity score
-            similarity = 1 - (dist / 2)
+            # distance is 0-2 with cosine, convert to 0-1 similarity score for convinience
+            similarity = 1 - (dist / 2) # now 1 is most similar and 0 is least
 
-            # boost personal txt and md notes 
+            # boost personal txt and md notes, as they are more likely to be relevant than code or pdf chunks
             source = meta.get("source", "")
             if any(source.endswith(ext) for ext in (".txt", ".md")):
                 similarity = min(1.0, similarity + 0.1)
@@ -148,9 +163,12 @@ class RAG:
 
     def search_by_keyword(self, query):
         """
-        Split query into meaningful words, find chunks containing most of them
+        Split query into meaningful words, find chunks containing most of them - useful when searching for specific names, titles or phrases
+
+        query: the user's question or statement to find relevant context for
+        Returns a list of the most relevant text chunks based on keyword matching
         """
-        stop_words = {
+        stop_words = { # common words to ignore in keyword search, as they don't add meaning
             'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been',
             'have', 'has', 'do', 'does', 'did', 'will', 'would', 'can',
             'could', 'should', 'may', 'might', 'what', 'where', 'when',
@@ -172,8 +190,9 @@ class RAG:
         if not words:
             return []
 
-        all_chunks = self.collection.get(include=["documents", "metadatas"])
+        all_chunks = self.collection.get(include=["documents", "metadatas"]) # keyword search doesn't use embeddings
 
+        # check the chunks for how many query words they contain
         matches = []
         for doc, meta in zip(all_chunks["documents"], all_chunks["metadatas"]):
             doc_lower = doc.lower()
@@ -194,16 +213,26 @@ class RAG:
         matches.sort(key=lambda x: x["similarity"], reverse=True)
         return matches
 
-    def format_context(self, chunks):
+    def format_context(self, chunks, max_chars=3000):
         """
         Format retrieved chunks into a string to inject into the prompt
+
+        chunks: list of relevant text chunks with metadata
+        max_chars: maximum total characters to include in the formatted context, to avoid overwhelming the model
+        returns: a formatted string combining the most relevant chunks for the model to use as context
         """
         if not chunks:
             return None
 
         lines = ["[Retrieved context from your files:]"]
-        for i, chunk in enumerate(chunks, 1):
-            lines.append(f"\n--- Source {i}: {chunk['name']} ({chunk['type']}, relevance: {chunk['similarity']}) ---")
+        total_chars = 0
+
+        for i, chunk in enumerate(chunks, 1): # combine the retrieved chunks into a single string with clear separators and source info, so the model can use it as context for answering
+            if total_chars >= max_chars:
+                lines.append(f"\n[Context cap reached at {max_chars} characters]")
+                break
+            lines.append(f"\nSource {i}: {chunk['name']} ({chunk['type']}, relevance: {chunk['similarity']})")
             lines.append(chunk["text"])
+            total_chars += len(chunk["text"]) # estimate of the added characters including formatting, to keep track of the total context length
 
         return "\n".join(lines)

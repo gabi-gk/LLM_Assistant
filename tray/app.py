@@ -1,0 +1,185 @@
+"""
+Main application logic for the system tray assistant
+- Manages the tray icon and hotkey using tkinter (actual chat GUI) and pystray (system tray icons and hotkeys)
+- Loads the model and RAG in the background on startup
+- Shows the chat window when the hotkey is pressed
+- Handles messages from the chat window, runs RAG search and agent loop, returns responses
+- Saves conversation history and session state on exit
+"""
+
+import threading
+import sys
+from PIL import Image, ImageDraw
+import pystray
+import keyboard
+from config import COMPACTION_THRESHOLD, COMPACTION_KEEP_RECENT
+from core.model import load_model, create_streamer
+from core.history import compact_history, save_conversation, load_last_session, save_session_state
+from core.rag import RAG
+from core.search import search_rag
+from agent.loop import run_agent
+from tray.window import ChatWindow
+from tools.notifications import restore_reminders, send_notification
+
+class TrayApp:
+    """
+    Main application class
+    Manages the tray icon, hotkey, chat window and model lifecycle
+    """
+
+    def __init__(self):
+        """
+        Initialize variables
+        """
+        self.model = None
+        self.tokenizer = None
+        self.streamer = None
+        self.rag = None
+        self.conversation_history = []
+        self.window = None
+        self.tray = None
+        self.ready = False
+
+    def initialise(self):
+        """
+        Load model and RAG — runs in background thread on startup
+        """
+        print("[TRAY] Loading model...")
+        self.model, self.tokenizer = load_model()
+        self.streamer = create_streamer(self.tokenizer)
+
+        self.rag = RAG()
+        self.rag.index_all() # index any new data for RAG
+
+        restore_reminders() # check for any acive reminders and restore them
+
+        self.conversation_history = load_last_session() # load the last conversation history and session state, if it exists
+        self.ready = True
+        print("[TRAY] Ready.")
+
+        # notify user model is loaded
+        send_notification("I'm ready to Chat!", "Model 'Marvin' loaded and ready to use.")
+
+    def on_message(self, user_input):
+        """
+        Called by ChatWindow when user sends a message
+        Runs RAG search, calls agent loop, returns response string
+
+        user_input: string of the user's message from the chat window
+        returns: string response from the assistant to be displayed in the chat window
+        """
+        if not self.ready:
+            return "Model is still loading, please wait..."
+
+        # handle pre-defined special commands
+        if user_input.lower() == "clear": # clear conversation history and session state
+            save_session_state("cleared")
+            self.conversation_history = []
+            return "History cleared"
+
+        self.conversation_history.append({ # save conversation history
+            "role": "user",
+            "content": user_input
+        })
+
+        chunks = search_rag(self.rag, user_input, self.conversation_history) # find releavnt data in the avaliable database using RAG
+
+        if chunks: # add relevant context to the user's message if RAG found anything
+            context = self.rag.format_context(chunks)
+            augmented_history = self.conversation_history[:-1] + [{
+                "role": "user",
+                "content": f"{context}\n\nUser question: {user_input}"
+            }]
+        else:
+            augmented_history = self.conversation_history
+
+        # run the AI agent to get a response, passing the history with context if available
+        reply = run_agent(
+            self.model, self.tokenizer,
+            augmented_history, self.streamer
+        )
+
+        # Keep track of the conversation history, including the assistant's replies
+        self.conversation_history.append({
+            "role": "assistant",
+            "content": reply
+        })
+
+        # compact long conversation history to provide less input to the model while keeping the relevant context
+        self.conversation_history = compact_history(
+            self.model, self.tokenizer,
+            self.conversation_history,
+            threshold=COMPACTION_THRESHOLD,
+            keep_recent=COMPACTION_KEEP_RECENT
+        )
+
+        return reply
+
+    def create_tray_icon(self):
+        """
+        Create a simple coloured circle as the tray icon
+        returns an image object
+        """
+        img = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+        draw.ellipse([8, 8, 56, 56], fill="#10f51b")
+        draw.ellipse([20, 20, 44, 44], fill="white")
+        return img
+
+    def on_quit(self):
+        """
+        Save conversation and fully exit the app
+        """
+        save_conversation(self.conversation_history)
+        save_session_state("closed")
+        
+        self.tray.stop()
+        sys.exit(0)
+
+    def on_show(self):
+        """
+        Show the chat window on hotkey press, if it's not already visible
+        """
+        if self.window:
+            self.window.show()
+
+    def run(self):
+        """
+        Start the application
+        Called from run.py after acquiring lock
+        Runs the tray icon in a background thread and the chat window on the main thread
+        """
+        # build chat window object, do not display yet, pass the on_message callback so that when a message is sent from the UI
+        # it calls the on_message function in this class to handle it
+        self.window = ChatWindow(on_message_callback=self.on_message)
+
+        # load model in background so UI appears immediately without waiting for model to load
+        # daemon thread will automatically exit the tray app when main thread exits
+        threading.Thread(target=self.initialise, daemon=True).start()
+
+        # register hotkey - add to config later?
+        # global hotkey to show the chat window, works even when the app is not focused
+        keyboard.add_hotkey("alt+space", self.on_show)
+
+        # build right click menu
+        menu = pystray.Menu(
+            pystray.MenuItem("Open", lambda icon, item: self.on_show(), default=True), # Add Open option to the right-click menu to show the chat window as a default action (bolded)
+            # lambda used so the pystray required parameters are passed but the function which doesn't need them, does not need to see them
+            pystray.MenuItem("Quit", lambda icon, item: self.on_quit())
+        )
+        self.tray = pystray.Icon(
+            "assistant", # unique ID for the tray icon, not displayed
+            self.create_tray_icon(), # the icon image
+            "Marvin", # tooltip text
+            menu # right click menu
+        )
+
+        # run tray in background thread, solve pystray and tkinker conflict by running them on separate threads
+        # pystray will run in tghe background and tkinter will run on the main thread
+        threading.Thread(
+            target=self.tray.run,
+            daemon=True
+        ).start()
+
+        # run tkinter on main thread
+        self.window.run()
