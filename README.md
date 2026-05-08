@@ -87,27 +87,33 @@ EDIT tray/app.py - uses core/search.py
 04.05.2026
 EDIT detailed comments added
  
-TESTS TO DO:
-- .txt read/write
-- .py read/write
-- detailed reminder schedule testing
-- complete logging
-- session restore
-- session clear
-- lock file
-- find_file
-- RAG search on .py .txt .md .pdf
+08.05.2026
+EDIT main.py - added always auto-save the conversation
+EDIT tray/window.py - added the log display in the chatbox
+EDIT agent/loop.py - added json parsing 
+CREATED knowledge.py - RAG is now controlled by the model
+EDIT agent/registry.py - added tools to search the knowledge base
+EDIT tray/app.py - removed automatic RAG
 
 KNOWN ISSUES:
-- Tool calling format inconsistent (XML vs JSON)
-- Model inputs wrong arguments occasionally (e.g. list_reminders with args)
+- Tool calling format inconsistent (XML vs JSON) - to finetune
+- Model inputs wrong arguments occasionally (e.g. list_reminders with args) - to finetune
+- The model will be inconsistent with the tools (e.g. file_path instead of path) - to finetune
+- the model runs incorrect commands when searching the RAG (search_knowdge base 90% of the time) - to finetune
 - Alt+Space does not toggle window close if already open
 - Tray window confirmation prompts (write_file etc) appear in terminal not in GUI
 - No way to see tool execution in tray window (confirmation is terminal only)
 - schedule reminders is not tracked in list_reminders
+- if something is saved during the session, it will not be accessible to the model until restart
+- Persistent reminder timer resets on code reset
 
 EXTRA TASKS:
 - Hotkey definition to be added to config
-- If chat is not cleared, show the log on the app on next opening
-- change so that history saves on clear too - always save
+- If chat is not cleared, show the log on the app on next opening - DONE
+- change so that history saves on clear too - always save - DONE
 - move confirmation function to a separate utility script
+- make the reminders remain on the screen until snoozed/confirmed
+- Reminder escalation — auto open chat if unconfirmed after X minutes with contextual proactive message from Marvin
+- Allow the data from RAG to be deleted
+- Synthetically generated data to finetune the model with correct commands and their syntax
+- on save default to data/information unless the user specifies otherwise - to finetune

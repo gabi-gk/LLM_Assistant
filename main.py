@@ -11,6 +11,7 @@ from agent.loop import run_agent
 from tools.notifications import restore_reminders
 from core.search import search_rag
 from core.lock import acquire_lock, release_lock
+from tools.knowledge import set_rag
 import os
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
@@ -28,6 +29,7 @@ def run_chat():
 
     rag = RAG()
     rag.index_all() # index any new data for RAG
+    set_rag(rag)
 
     restore_reminders() # check for any acive reminders and restore them
 
@@ -52,6 +54,7 @@ def run_chat():
             break
         # handle pre-defined special commands
         if user_input.lower() == "clear": # clear conversation history and session state
+            save_conversation(conversation_history)
             save_session_state("cleared")
             conversation_history = []
             print("History cleared.\n")
@@ -59,29 +62,10 @@ def run_chat():
         
         # save history
         conversation_history.append({"role": "user", "content": user_input})
-        
-        chunks = search_rag(rag, user_input, conversation_history) # find releavnt data in the avaliable database using RAG
-
-        if chunks: # add relevant context to the user's message if RAG found anything
-            if DEBUG:
-                print("\n[RAG found:]")
-                for c in chunks:
-                    print(f"  → {c['name']} ({c['type']}, relevance: {c['similarity']})")
-                    print(f"    {c['text'][:100]}...")
-                print()
-            # inject context into the user message
-            context = rag.format_context(chunks)
-            augmented_history = conversation_history[:-1] + [{
-                "role": "user",
-                "content": f"{context}\n\nUser question: {user_input}"
-            }]
-        else:
-            augmented_history = conversation_history
-
-
+    
         # AI response
         print("AI: ", end="", flush=True)
-        reply = run_agent(model, tokenizer, augmented_history, streamer)
+        reply = run_agent(model, tokenizer, conversation_history, streamer)
         
         conversation_history.append({"role": "assistant", "content": reply})
         print()

@@ -9,7 +9,8 @@ from tools import (
     read_file, write_file, append_file, create_file, list_directory, find_file,
     run_command,
     send_notification, schedule_reminder, persistent_reminder,
-    cancel_reminder, list_reminders, edit_reminder
+    cancel_reminder, list_reminders, edit_reminder,
+    search_knowledge_base, search_conversation_logs
 )
 
 def tool_help(group):
@@ -23,6 +24,7 @@ def tool_help(group):
         "file_tools": FILE_TOOL_DESCRIPTIONS,
         "shell_tools": SHELL_TOOL_DESCRIPTIONS,
         "notification_tools": NOTIFICATION_TOOL_DESCRIPTIONS,
+        "knowledge_tools": KNOWLEDGE_TOOL_DESCRIPTIONS
     }
     if group in groups:
         return groups[group]
@@ -48,6 +50,9 @@ TOOLS = {
     "cancel_reminder": cancel_reminder,
     "list_reminders": list_reminders,
     "edit_reminder": edit_reminder,
+    # Context search
+    "search_knowledge_base": search_knowledge_base,
+    "search_conversation_logs": search_conversation_logs,
     # Tool help
     "tool_help": tool_help
 }
@@ -55,6 +60,8 @@ TOOLS = {
 # Detailed descritions, injected into the prompt when requested
 FILE_TOOL_DESCRIPTIONS = """
 File tools — use these to read, write and navigate the filesystem:
+
+IMPORTANT: The path parameter is always called "path", filename is always called "filename"
 
 - read_file — read contents of any file, accepts a full path or just a filename - when user wants to SEE the content
   Example: <tool>read_file</tool>
@@ -135,6 +142,23 @@ IMPORTANT RULES:
   <args>{"reminder_id": "Countdown_1234567890", "interval_minutes": 2}</args>
 """
 
+KNOWLEDGE_TOOL_DESCRIPTIONS = """
+Knowledge tools - use these to search for information not in the current conversation if the users asks for something specific or if you can't find relevant information in the current conversation:
+
+IMPORTANT RULES:
+- Only use these tools if you genuinely cannot answer from the current conversation history
+- Never use these for follow-up questions where the answer is already in the conversation
+- If the user asks about something specific, check and answer from the conversation history first
+
+- search_conversation_logs — search past conversation history, if you don't find anything relevant check the knowledge base next
+  Example: <tool>search_conversation_logs</tool>
+  <args>{"query": "favourite cat"}</args>
+
+- search_knowledge_base — search personal documents, notes, PDFs and files if asked by the user or if you can't find relevant information in the logs
+  Example: <tool>search_knowledge_base</tool>
+  <args>{"query": "DPO evaluation metrics"}</args>
+"""
+
 # Main description, always injected into the prompt
 TOOL_DESCRIPTIONS = """
 You have access to external tools. Call them using this exact XML-like syntax, replacing the name and arguments as needed:
@@ -143,13 +167,15 @@ You have access to external tools. Call them using this exact XML-like syntax, r
 
 ALWAYS use the XML format above to actually execute tools.
 If you want to use a tool, output the XML immediately - do not explain first.
+Make sure to follow the syntax exactly, or the tool call will fail. If your tool call fails, check the syntax and try again.
+
+If you get a syntax error or unexpected keyword argument when calling a tool, call tool_help with the relevant group to get the correct syntax:
+<tool>tool_help</tool>
+<args>{"group": "notification_tools"}</args>
 
 Avaliable tool groups - call tool_help first to see full syntax details and example:
 - file_tools: read_file, write_file, append_file, create_file, list_directory, find_file
 - shell_tools: run_command
 - notification_tools: send_notification, schedule_reminder, persistent_reminder, cancel_reminder, edit_reminder, list_reminders
-
-To get help on a group:
-<tool>tool_help</tool>
-<args>{"group": "notification_tools"}</args>
+- knowledge_tools: search_conversation_logs, search_knowledge_base
 """

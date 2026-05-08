@@ -28,10 +28,17 @@ def parse_tool_call(response):
     args = {}
     if args_match:
         try:
-            args = json.loads(args_match.group(1).strip()) # parse the arguments JSON string into a dictionary
+            raw = args_match.group(1).strip() # extract the raw JSON string of arguments from the tags
+            # find the actual boundaries and remove any extra text to avoid JSON parsing errors
+            start = raw.find('{') 
+            end = raw.rfind('}') + 1
+            if start != -1 and end > start:
+                args = json.loads(raw[start:end]) # extract the JSON substring containing the arguments
         except json.JSONDecodeError:
             return tool_name, {}
 
+    if DEBUG:
+        print(f"[DEBUG] args type: {type(args)}, value: {args}")
     return tool_name, args
 
 

@@ -124,6 +124,43 @@ class ChatWindow:
             daemon=True
         ).start()
 
+    def load_history(self, conversation_history):
+        """
+        Load a conversation history into the chat display
+
+        conversation_history: list of dicts with 'role' and 'content' keys representing the conversation history
+        """
+        for message in conversation_history:
+            content = message["content"]
+            # skip summary messages
+            if message["content"].startswith("[Earlier conversation summary:"):
+                continue
+            # skip tool result messages
+            if message["content"].startswith("<tool_result>"):
+                continue
+            # skip tool call messages  
+            if "<tool>" in message["content"] and "</tool>" in message["content"]:
+                continue
+            if message["role"] == "user":
+                # compacted summary messages are synthetic so show them as system context, not user input
+                if content.startswith("[Earlier conversation summary:"):
+                    self.append_message("System", content, "system")
+                else:
+                    self.append_message("You", content, "user")
+            elif message["role"] == "assistant":
+                self.append_message("Marvin", content, "ai")
+
+    def clear_display(self):
+        """
+        Wipe all messages from the chat display whne the user clears history
+        """
+        def _update():
+            self.chat_display.config(state=tk.NORMAL)
+            self.chat_display.delete("1.0", tk.END)
+            self.chat_display.config(state=tk.DISABLED)
+
+        self.window.after(0, _update)
+
     def process_message(self, user_input):
         """
         Run in background thread — calls model and updates display

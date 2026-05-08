@@ -8,7 +8,6 @@ Manages the Retrieval-Augmented Generation (RAG) system for the assistant
 '''
 import os
 import chromadb
-from matplotlib import lines
 from sentence_transformers import SentenceTransformer
 from pathlib import Path
 from config import DEBUG, INFORMATION_DIR, LOGS_DIR, CHROMA_DIR, K_DEFAULT
@@ -100,6 +99,7 @@ class RAG:
 
         files = [f for f in path.rglob("*") if f.suffix in supported] # find all supported files in this directory and subdirectories
 
+        print(f"[DEBUG] {directory} — found {len(files)} files: {[f.name for f in files]}")
         if not files:
             print(f"[RAG] No supported files found in {directory}")
             return

@@ -7,19 +7,20 @@ Main application logic for the system tray assistant
 - Saves conversation history and session state on exit
 """
 
+from pathlib import Path
 import threading
 import sys
 from PIL import Image, ImageDraw
 import pystray
 import keyboard
-from config import COMPACTION_THRESHOLD, COMPACTION_KEEP_RECENT
+from config import DEBUG, COMPACTION_THRESHOLD, COMPACTION_KEEP_RECENT, LOGS_DIR
 from core.model import load_model, create_streamer
-from core.history import compact_history, save_conversation, load_last_session, save_session_state
+from core.history import compact_history, save_conversation, save_current_session, load_last_session, save_session_state
 from core.rag import RAG
-from core.search import search_rag
 from agent.loop import run_agent
 from tray.window import ChatWindow
 from tools.notifications import restore_reminders, send_notification
+from tools.knowledge import set_rag
 
 class TrayApp:
     """
@@ -50,10 +51,17 @@ class TrayApp:
 
         self.rag = RAG()
         self.rag.index_all() # index any new data for RAG
+        set_rag(self.rag)
 
         restore_reminders() # check for any acive reminders and restore them
 
         self.conversation_history = load_last_session() # load the last conversation history and session state, if it exists
+        
+        # populate chat window with restored history if present
+        if self.conversation_history:
+            self.window.load_history(self.conversation_history)
+            self.window.append_message("System", "Previous session restored.", "system")
+
         self.ready = True
         print("[TRAY] Ready.")
 
@@ -73,8 +81,10 @@ class TrayApp:
 
         # handle pre-defined special commands
         if user_input.lower() == "clear": # clear conversation history and session state
+            save_conversation(self.conversation_history)
             save_session_state("cleared")
             self.conversation_history = []
+            self.window.clear_display()
             return "History cleared"
 
         self.conversation_history.append({ # save conversation history
@@ -82,21 +92,11 @@ class TrayApp:
             "content": user_input
         })
 
-        chunks = search_rag(self.rag, user_input, self.conversation_history) # find releavnt data in the avaliable database using RAG
-
-        if chunks: # add relevant context to the user's message if RAG found anything
-            context = self.rag.format_context(chunks)
-            augmented_history = self.conversation_history[:-1] + [{
-                "role": "user",
-                "content": f"{context}\n\nUser question: {user_input}"
-            }]
-        else:
-            augmented_history = self.conversation_history
-
         # run the AI agent to get a response, passing the history with context if available
         reply = run_agent(
             self.model, self.tokenizer,
-            augmented_history, self.streamer
+            self.conversation_history,
+            self.streamer
         )
 
         # Keep track of the conversation history, including the assistant's replies
@@ -113,6 +113,10 @@ class TrayApp:
             keep_recent=COMPACTION_KEEP_RECENT
         )
 
+        # Save the current session state; reset to "closed" so post-clear messages are recoverable on crash
+        save_session_state("closed")
+        save_current_session(self.conversation_history)
+
         return reply
 
     def create_tray_icon(self):
@@ -128,11 +132,16 @@ class TrayApp:
 
     def on_quit(self):
         """
-        Save conversation and fully exit the app
+        Save conversation as a timestamp and fully quit
         """
-        save_conversation(self.conversation_history)
+        save_conversation(self.conversation_history)  # creates timestamped file
         save_session_state("closed")
         
+        # remove the current file so it can be used by the next session
+        current = Path(f"{LOGS_DIR}/current_session.json")
+        if current.exists():
+            current.unlink()
+
         self.tray.stop()
         sys.exit(0)
 

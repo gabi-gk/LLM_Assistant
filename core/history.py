@@ -57,6 +57,23 @@ def save_conversation(conversation_history, summary=None):
 
     print(f"[SESSION] Conversation saved to {path}")    
 
+def save_current_session(conversation_history):
+    """
+    Overwrite the current session file with the latest conversation state to keep track of current conversation in case of a restart
+    
+    conversation_history: list of message dicts with role and content keys
+    """
+    if not conversation_history:
+        return
+    
+    os.makedirs(LOGS_DIR, exist_ok=True)
+    path = f"{LOGS_DIR}/current_session.json" # save to a fixed filename to keep track of the current session
+    with open(path, "w") as f:
+        json.dump({
+            "timestamp": datetime.now().strftime("%Y-%m-%d_%H-%M-%S"),
+            "conversation": conversation_history
+        }, f, indent=2)
+
 def load_last_session():
     """
     Load the most recent conversation log back into memory on startup if not cleared before power down
@@ -77,7 +94,21 @@ def load_last_session():
     if not logs_path.exists():
         return []
 
-    # find the most recent log by filename — they're timestamped
+    # check whether the current session file exists
+    current = logs_path / "current_session.json"
+    if current.exists():
+        try:
+            with open(current, encoding="utf-8") as f:
+                data = json.load(f)
+            conversation = data.get("conversation", [])
+            if conversation:
+                restored = conversation[-MAX_RESTORE_MESSAGES:]
+                print(f"[SESSION] Restored {len(restored)} messages from current session")
+                return restored
+        except Exception as e:
+            print(f"[SESSION] Could not restore current session: {e}")
+
+    # fallback: find the most recent log by filename — they're timestamped
     logs = sorted(logs_path.glob("*.json"), reverse=True)
     if not logs:
         return []
@@ -176,4 +207,3 @@ def compact_history(model, tokenizer, history, threshold=16, keep_recent=6):
     }
     
     return [summary_message, summary_ack] + recent
-

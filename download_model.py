@@ -1,8 +1,6 @@
 from huggingface_hub import snapshot_download
 
 '''
-Knowledge check:
-
 .safetensors vs .pt/.bin store floating point numbers that represent model weights
 .pt and .bin use python's pickle format - serialisation format storing arbitrary objects and executables
 .safetensors only downloads the objects without executables meaning it loads faster and will not contain any malicious .bin files
