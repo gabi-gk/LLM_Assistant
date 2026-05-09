@@ -10,7 +10,9 @@ from tools import (
     run_command,
     send_notification, schedule_reminder, persistent_reminder,
     cancel_reminder, list_reminders, edit_reminder,
-    search_knowledge_base, search_conversation_logs
+    search_knowledge_base, search_conversation_logs,
+    list_open_windows, switch_to_window, minimize_window, maximize_window, list_active_window, close_window, 
+    open_application, find_application
 )
 
 def tool_help(group):
@@ -24,7 +26,9 @@ def tool_help(group):
         "file_tools": FILE_TOOL_DESCRIPTIONS,
         "shell_tools": SHELL_TOOL_DESCRIPTIONS,
         "notification_tools": NOTIFICATION_TOOL_DESCRIPTIONS,
-        "knowledge_tools": KNOWLEDGE_TOOL_DESCRIPTIONS
+        "knowledge_tools": KNOWLEDGE_TOOL_DESCRIPTIONS,
+        "window_tools": WINDOW_TOOL_DESCRIPTIONS,
+        "app_tools": APP_TOOL_DESCRIPTIONS
     }
     if group in groups:
         return groups[group]
@@ -53,6 +57,16 @@ TOOLS = {
     # Context search
     "search_knowledge_base": search_knowledge_base,
     "search_conversation_logs": search_conversation_logs,
+    # window management
+    "list_open_windows":  list_open_windows,
+    "switch_to_window":   switch_to_window,
+    "minimize_window":    minimize_window,
+    "maximize_window":    maximize_window,
+    "list_active_window": list_active_window,
+    "close_window":       close_window,
+    # App management
+    "open_application":   open_application,
+    "find_application":   find_application,
     # Tool help
     "tool_help": tool_help
 }
@@ -149,6 +163,7 @@ IMPORTANT RULES:
 - Only use these tools if you genuinely cannot answer from the current conversation history
 - Never use these for follow-up questions where the answer is already in the conversation
 - If the user asks about something specific, check and answer from the conversation history first
+- After receiving search results, ALWAYS provide a direct answer immediately — do not search again unless the results were empty
 
 - search_conversation_logs — search past conversation history, if you don't find anything relevant check the knowledge base next
   Example: <tool>search_conversation_logs</tool>
@@ -157,6 +172,46 @@ IMPORTANT RULES:
 - search_knowledge_base — search personal documents, notes, PDFs and files if asked by the user or if you can't find relevant information in the logs
   Example: <tool>search_knowledge_base</tool>
   <args>{"query": "DPO evaluation metrics"}</args>
+"""
+
+WINDOW_TOOL_DESCRIPTIONS = """
+Window management tools - use these to control open windows and applications:
+
+- list_open_windows — list all currently open windows
+  Example: <tool>list_open_windows</tool>
+  <args>{}</args>
+
+- list_active_window — get the currently focused window
+  Example: <tool>list_active_window</tool>
+  <args>{}</args>
+
+- switch_to_window — bring a window to focus (partial title match supported)
+  Example: <tool>switch_to_window</tool>
+  <args>{"title": "Discord"}</args>
+
+- minimize_window — minimize a window
+  Example: <tool>minimize_window</tool>
+  <args>{"title": "Discord"}</args>
+
+- maximize_window — maximize a window
+  Example: <tool>maximize_window</tool>
+  <args>{"title": "Discord"}</args>
+
+- close_window — close a window
+  Example: <tool>close_window</tool>
+  <args>{"title": "Discord"}</args>
+"""
+
+APP_TOOL_DESCRIPTIONS = """
+Application management tools - use these to find and open applications on the system:
+
+- open_application — open an application by name or common shortcut
+  Example: <tool>open_application</tool>
+  <args>{"name": "settings"}</args>
+
+- find_application — search for an installed application by name, useful when not sure of the exact app name or path
+  Example: <tool>find_application</tool>
+  <args>{"name": "discord"}</args>
 """
 
 # Main description, always injected into the prompt
@@ -169,7 +224,7 @@ ALWAYS use the XML format above to actually execute tools.
 If you want to use a tool, output the XML immediately - do not explain first.
 Make sure to follow the syntax exactly, or the tool call will fail. If your tool call fails, check the syntax and try again.
 
-If you get a syntax error or unexpected keyword argument when calling a tool, call tool_help with the relevant group to get the correct syntax:
+Always call tool_help first to see detailed descriptions and examples for each tool group before using them
 <tool>tool_help</tool>
 <args>{"group": "notification_tools"}</args>
 
@@ -178,4 +233,6 @@ Avaliable tool groups - call tool_help first to see full syntax details and exam
 - shell_tools: run_command
 - notification_tools: send_notification, schedule_reminder, persistent_reminder, cancel_reminder, edit_reminder, list_reminders
 - knowledge_tools: search_conversation_logs, search_knowledge_base
+- window_tools: list_open_windows, switch_to_window, minimize_window, maximize_window, list_active_window, close_window
+- app_tools: open_application, find_application
 """

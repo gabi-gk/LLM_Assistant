@@ -91,9 +91,16 @@ EDIT detailed comments added
 EDIT main.py - added always auto-save the conversation
 EDIT tray/window.py - added the log display in the chatbox
 EDIT agent/loop.py - added json parsing 
-CREATED knowledge.py - RAG is now controlled by the model
+CREATED tools/knowledge.py - RAG is now controlled by the model
 EDIT agent/registry.py - added tools to search the knowledge base
 EDIT tray/app.py - removed automatic RAG
+
+09.05.2025
+CREATED tools/windows.py - window listing, switching, minimizing, maximizing
+CREATED tools/apps/system.py - open and find installed applications
+CREATED tools/apps/discord_bot.py - Discord bot with per-user conversation history
+EDIT tray/app.py - Discord bot starts on startup with shared model
+CREATED discord_bot.py - added clear and improved logging
 
 KNOWN ISSUES:
 - Tool calling format inconsistent (XML vs JSON) - to finetune
@@ -106,6 +113,8 @@ KNOWN ISSUES:
 - schedule reminders is not tracked in list_reminders
 - if something is saved during the session, it will not be accessible to the model until restart
 - Persistent reminder timer resets on code reset
+- format_context truncates large documents at 3000 chars
+- the model adds "How can I help in every message" 
 
 EXTRA TASKS:
 - Hotkey definition to be added to config
@@ -117,3 +126,6 @@ EXTRA TASKS:
 - Allow the data from RAG to be deleted
 - Synthetically generated data to finetune the model with correct commands and their syntax
 - on save default to data/information unless the user specifies otherwise - to finetune
+
+DISCORD:
+- Let the model see the whole chat from other users too (e.g. for summary)

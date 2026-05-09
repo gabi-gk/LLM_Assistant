@@ -21,6 +21,7 @@ from agent.loop import run_agent
 from tray.window import ChatWindow
 from tools.notifications import restore_reminders, send_notification
 from tools.knowledge import set_rag
+from tools.apps.discord_bot import set_discord_model, start_discord_bot
 
 class TrayApp:
     """
@@ -52,6 +53,9 @@ class TrayApp:
         self.rag = RAG()
         self.rag.index_all() # index any new data for RAG
         set_rag(self.rag)
+
+        set_discord_model(self.model, self.tokenizer, self.rag)
+        start_discord_bot()
 
         restore_reminders() # check for any acive reminders and restore them
 

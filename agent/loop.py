@@ -21,7 +21,7 @@ def parse_tool_call(response):
     tool_match = re.search(r'<tool>(.*?)</tool>', response, re.DOTALL) # check for <tool> tags in the response and extract the tool name
     args_match = re.search(r'<args>(.*?)</args>', response, re.DOTALL) # check for <args> tags and extract the JSON string of arguments
 
-    if not tool_match:
+    if not tool_match or not args_match:
         return None, None
 
     tool_name = tool_match.group(1).strip() # extract the tool name from the tags 
