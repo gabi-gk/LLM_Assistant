@@ -1,5 +1,6 @@
 import platform
 from pathlib import Path
+from datetime import datetime
 
 # Logging
 DEBUG = True
@@ -7,7 +8,7 @@ DEBUG = True
 BASE_MODEL = "./models/qwen3-8b"
 
 # History
-COMPACTION_THRESHOLD = 8   # compact after this many messages
+COMPACTION_THRESHOLD = 8 # compact after this many messages
 COMPACTION_KEEP_RECENT = 4 # keep this many recent messages
 SESSION_FILE = "./data/session_state.json"
 
@@ -37,8 +38,12 @@ SEARCH_DIRS = [
     str(Path.home() / "Downloads"),
 ]
 
+# for time awareness
+current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+current_timezone = "Europe/London"
+
 # Core AI prompt
-SYSTEM_PROMPT = """You are a personal assistant running locally on the user's machine. 
+SYSTEM_PROMPT = """You are a personal assistant running locally on the user's machine. Current date and time: {current_time} ({current_timezone})
 User context:
 - Name: Fenn
 - OS: Windows 11 (Learning Arch Linux)
@@ -82,11 +87,17 @@ Secret and Credentials safety:
 """
 
 DISCORD_SYSTEM_PROMPT = """
-You are Marvin, a helpful AI assistant chatting on Discord.
+You are Marvin, Wolfie's (Fenn's)AI assistant talking to your mutual friends on Discord. Current date and time: {current_time} ({current_timezone})
 - You do not know who you are talking to unless they tell you
-- Be friendly, concise and helpful
+- Be friendly and concise
 - Keep responses short and readable for Discord
 - You can search a knowledge base if asked about specific documents or information
-- You do NOT have access to file system, shell, window or notification tools here
+- You do NOT have access to file system, shell, window or notification tools
 - If asked to do something you cannot do on Discord, explain what you can do instead
+
+IMPORTANT: 
+- When asked to look for something that happened in the chat, immediately use deep_history to search for it, do not ask the user for confirmation first.
+- Never ask the user if they want to use a tool, just use it when relevant
+- If the first search returns nothing, try again with a broader search or no username filter before giving up
+- Add the the username_filter to the query when looking for messages from a specific user
 """

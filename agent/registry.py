@@ -35,6 +35,48 @@ def tool_help(group):
     available = ", ".join(groups.keys()) # list available groups in error message
     return f"[ERROR] Unknown group: {group}. Available: {available}"
 
+def get_discord_tools(search_kb_func, deep_history_func, mention_user_func):
+    """
+    Returns a restricted tool registry for Discord use.
+    No file/shell/window tools — knowledge and history only.
+    
+    Called by discord_bot.py on startup with its own function references.
+    """
+    return {
+        "search_knowledge_base":    search_kb_func,
+        "get_deep_history":         deep_history_func,
+        "mention_user":             mention_user_func,
+    }
+
+DISCORD_TOOL_DESCRIPTIONS = """
+You have access to these tools on Discord. Use XML format to call them:
+<tool>tool_name</tool>
+<args>{"argument": "value"}</args>
+
+Available tools:
+- get_deep_history — fetch deeper channel history, optionally filtered by user or time
+  Use when asked about past discussions, a specific user's messages, or what happened recently
+  Example (full history): <tool>get_deep_history</tool>
+  <args>{"limit": 100}</args>
+  Example (specific user): <tool>get_deep_history</tool>
+  <args>{"limit": 100, "username_filter": "wolfiewoof"}</args>
+  Example (last 2 hours): <tool>get_deep_history</tool>
+  <args>{"limit": 200, "hours": 2}</args>
+  Example (user in last hour): <tool>get_deep_history</tool>
+  <args>{"limit": 100, "username_filter": "wolfiewoof", "hours": 1}</args>
+
+- search_knowledge_base — search personal documents and notes
+  Example: <tool>search_knowledge_base</tool>
+  <args>{"query": "roosevelt quote"}</args>
+
+- mention_user — get the Discord mention string for a server member
+  Use this when asked to ping or mention someone
+  The returned string like <@123456789> will automatically ping them when sent
+  Example: <tool>mention_user</tool>
+  <args>{"username": "wolfiewoof"}</args>
+
+"""
+
 # maps tool name strings to actual functions
 # agent loop uses this to execute tool calls by name
 TOOLS = {

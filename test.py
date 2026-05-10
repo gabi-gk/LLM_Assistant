@@ -1,5 +1,3 @@
-import pygetwindow as gw
+from datetime import datetime
 
-windows = gw.getAllWindows()
-for w in windows:
-    print(repr(w.title))
+print (datetime.now().strftime("%Y-%m-%d %H:%M:%S"))

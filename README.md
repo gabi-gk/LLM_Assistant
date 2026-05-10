@@ -101,6 +101,11 @@ CREATED tools/apps/system.py - open and find installed applications
 CREATED tools/apps/discord_bot.py - Discord bot with per-user conversation history
 EDIT tray/app.py - Discord bot starts on startup with shared model
 CREATED discord_bot.py - added clear and improved logging
+EDIT tools/app/discord_bot.py - added deep search option for full channel history
+
+10.05.2025
+EDIT tools/app/discord_bot.py - added hourly filter
+EDIT config.py - added current time to the prompt
 
 KNOWN ISSUES:
 - Tool calling format inconsistent (XML vs JSON) - to finetune
@@ -114,7 +119,9 @@ KNOWN ISSUES:
 - if something is saved during the session, it will not be accessible to the model until restart
 - Persistent reminder timer resets on code reset
 - format_context truncates large documents at 3000 chars
-- the model adds "How can I help in every message" 
+- the model adds "How can I help" and a smiling face emoji in every message - to finetune
+- doesnt execute discord commands properly without help (once finetuned search_conversation_logs can be added again) - to finetune
+- timezone mismatch - check later
 
 EXTRA TASKS:
 - Hotkey definition to be added to config
@@ -126,6 +133,8 @@ EXTRA TASKS:
 - Allow the data from RAG to be deleted
 - Synthetically generated data to finetune the model with correct commands and their syntax
 - on save default to data/information unless the user specifies otherwise - to finetune
-
-DISCORD:
-- Let the model see the whole chat from other users too (e.g. for summary)
+- discord trigger on word/mention only mode
+- image generation
+- time awareness with datetime
+- timestamped logs and a timeframe filter
+- make discord start config (autostart vs start on demand)
