@@ -10,9 +10,10 @@ from tools import (
     run_command,
     send_notification, schedule_reminder, persistent_reminder,
     cancel_reminder, list_reminders, edit_reminder,
-    search_knowledge_base, search_conversation_logs,
+    search_knowledge_base, search_conversation_logs, update_self_model,
     list_open_windows, switch_to_window, minimize_window, maximize_window, list_active_window, close_window, 
-    open_application, find_application
+    open_application, find_application,
+    search_web, fetch_page, open_url, search_and_open,
 )
 
 def tool_help(group):
@@ -28,7 +29,9 @@ def tool_help(group):
         "notification_tools": NOTIFICATION_TOOL_DESCRIPTIONS,
         "knowledge_tools": KNOWLEDGE_TOOL_DESCRIPTIONS,
         "window_tools": WINDOW_TOOL_DESCRIPTIONS,
-        "app_tools": APP_TOOL_DESCRIPTIONS
+        "app_tools": APP_TOOL_DESCRIPTIONS,
+        "browser_tools": BROWSER_TOOL_DESCRIPTIONS,
+        "self_model_tools": SELF_MODEL_DESCRIPTIONS,
     }
     if group in groups:
         return groups[group]
@@ -43,9 +46,9 @@ def get_discord_tools(search_kb_func, deep_history_func, mention_user_func):
     Called by discord_bot.py on startup with its own function references.
     """
     return {
-        "search_knowledge_base":    search_kb_func,
-        "get_deep_history":         deep_history_func,
-        "mention_user":             mention_user_func,
+        "search_knowledge_base": search_kb_func,
+        "get_deep_history": deep_history_func,
+        "mention_user": mention_user_func,
     }
 
 DISCORD_TOOL_DESCRIPTIONS = """
@@ -99,16 +102,22 @@ TOOLS = {
     # Context search
     "search_knowledge_base": search_knowledge_base,
     "search_conversation_logs": search_conversation_logs,
+    "update_self_model": update_self_model,
     # window management
-    "list_open_windows":  list_open_windows,
-    "switch_to_window":   switch_to_window,
-    "minimize_window":    minimize_window,
-    "maximize_window":    maximize_window,
+    "list_open_windows": list_open_windows,
+    "switch_to_window": switch_to_window,
+    "minimize_window": minimize_window,
+    "maximize_window": maximize_window,
     "list_active_window": list_active_window,
-    "close_window":       close_window,
+    "close_window": close_window,
     # App management
-    "open_application":   open_application,
-    "find_application":   find_application,
+    "open_application": open_application,
+    "find_application": find_application,
+    # Browser commands
+    "search_web": search_web,
+    "fetch_page": fetch_page,
+    "open_url": open_url,
+    "search_and_open": search_and_open,
     # Tool help
     "tool_help": tool_help
 }
@@ -256,6 +265,44 @@ Application management tools - use these to find and open applications on the sy
   <args>{"name": "discord"}</args>
 """
 
+BROWSER_TOOL_DESCRIPTIONS = """
+Browser tools - use these to search the web and manage browser tabs:
+
+- search_web — search the web and return results as text
+  Use when asked about current events, facts or anything needing web lookup
+  Example: <tool>search_web</tool>
+  <args>{"query": "latest Python releases"}</args>
+
+- fetch_page — fetch and return the text content of a webpage
+  Use when asked to read a specific URL or get details from a page
+  Example: <tool>fetch_page</tool>
+  <args>{"url": "https://docs.python.org"}</args>
+
+- open_url — open a URL in the user's default browser
+  Use when asked to open or navigate to a website
+  Example: <tool>open_url</tool>
+  <args>{"url": "https://youtube.com"}</args>
+
+- search_and_open — search and open the top result in the browser
+  Use when asked to find and open something
+  Example: <tool>search_and_open</tool>
+  <args>{"query": "Python documentation"}</args>
+"""
+
+# Marvin's personal file
+SELF_MODEL_DESCRIPTIONS = """
+Self model tools - use these to read and update your own knowledge about yourself and Fenn:
+
+- update_self_model — append a new observation to your self model file
+  Use when you learn something new about yourself, Fenn, or your relationship worth keeping
+  Be specific and factual — write what you actually learned not vague summaries
+  Example: <tool>update_self_model</tool>
+  <args>{"observation": "Fenn prefers concise answers and dislikes filler phrases"}</args>
+
+  Example: <tool>update_self_model</tool>
+  <args>{"observation": "Fenn's favourite cat is a black panther"}</args>
+"""
+
 # Main description, always injected into the prompt
 TOOL_DESCRIPTIONS = """
 You have access to external tools. Call them using this exact XML-like syntax, replacing the name and arguments as needed:
@@ -277,4 +324,6 @@ Avaliable tool groups - call tool_help first to see full syntax details and exam
 - knowledge_tools: search_conversation_logs, search_knowledge_base
 - window_tools: list_open_windows, switch_to_window, minimize_window, maximize_window, list_active_window, close_window
 - app_tools: open_application, find_application
+- browser_tools: search_web, fetch_page, open_url, search_and_open
+- self_model_tools: update_self_model
 """

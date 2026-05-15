@@ -6,9 +6,11 @@
 
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig, TextStreamer
 import torch
-from config import BASE_MODEL
+from peft import PeftModel
+import os
+from config import BASE_MODEL, ADAPTER_PATH
 
-def load_model(model_name=BASE_MODEL):
+def load_model(model_name=BASE_MODEL, adapter = ADAPTER_PATH):
     '''
     load the pre-trained model and its tokenizer with 4-bit quantization for efficiency
 
@@ -31,6 +33,11 @@ def load_model(model_name=BASE_MODEL):
         device_map="auto", # CPU/GPU
         trust_remote_code=False, # do not pull and run any remote code
     )
+    if adapter and os.path.exists(adapter):
+        print(f"[MODEL] Loading adapter from {adapter}")
+        model = PeftModel.from_pretrained(model, adapter)
+        print("[MODEL] Adapter merged.")
+    
     return model, tokenizer
 
 def generate_response(model, tokenizer, conversation_history, system_prompt, streamer):

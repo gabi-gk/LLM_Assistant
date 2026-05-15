@@ -15,6 +15,7 @@ import discord
 import threading
 import os
 import json
+import re
 from dotenv import load_dotenv
 from tools.knowledge import search_knowledge_base
 from core.model import generate_response
@@ -273,6 +274,15 @@ def generate_discord_response(user_id, username, user_message, channel_context="
 
     if final_response is None:
         final_response = "[I reached my turn limit — please try rephrasing your question]"
+
+    mention_pattern = re.compile(r'<@\d+>')
+    for msg in working_history:
+        if isinstance(msg.get("content"), str) and "<tool_result>" in msg["content"]:
+            mentions = mention_pattern.findall(msg["content"])
+            for mention in mentions:
+                if mention not in final_response:
+                    final_response = f"{mention} {final_response}"
+
 
     # save clean exchange to persistent history
     # store user_message not full_message so logs are readable

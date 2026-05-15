@@ -151,8 +151,8 @@ def summarise_history(model, tokenizer, history_chunk):
     # prompt the model to summarize the user message
     summary_prompt = [{
         "role": "user",
-        "content": f"Summarise this conversation excerpt concisely, "
-                   f"preserving any important facts, decisions, or context:\n\n{formatted}"
+        "content": f"Summarise this conversation in 3-4 sentences, "
+                   f"keeping only the most important facts and decisions:\n\n{formatted}"
     }]
     
     prompt = tokenizer.apply_chat_template( # generate the prompt with the same template as the main conversation

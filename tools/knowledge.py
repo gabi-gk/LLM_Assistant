@@ -5,6 +5,10 @@ Provides tools for searching the rag database by the model if the data is not in
 '''
 from pathlib import Path
 from config import DEBUG, INFORMATION_DIR, LOGS_DIR
+from datetime import datetime
+
+SELF_MODEL_PATH = "data/information/marvin_self.md"
+
 
 rag = None
 
@@ -102,3 +106,29 @@ def search_conversation_logs(query):
         print(f"[DEBUG] search_conversation_logs: {len(similarity_chunks)} chunks found")
 
     return rag.format_context(similarity_chunks)
+
+def update_self_model(observation):
+    """
+    Append a new observation to Marvin's self model file.
+    Called when Marvin learns something new about himself or Fenn
+    worth remembering across sessions.
+
+    observation: the fact or observation to save
+    returns: success or error message
+    """
+    path = Path(SELF_MODEL_PATH)
+    
+    if not path.exists():
+        return f"[ERROR] Self model not found at {SELF_MODEL_PATH}"
+    
+    timestamp = datetime.now().strftime("%Y-%m-%d")
+    entry = f"\n- [{timestamp}] {observation}"
+    
+    try:
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(entry)
+        if DEBUG:
+            print(f"[SELF MODEL] Updated: {observation}")
+        return f"[SUCCESS] Noted: {observation}"
+    except Exception as e:
+        return f"[ERROR] Could not update self model: {e}"

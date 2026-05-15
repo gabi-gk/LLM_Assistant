@@ -5,8 +5,10 @@ models/
 data/chroma/
 data/logs/
 data/information/
+data/training/
 data/active_reminders.json
 data/session_state.json
+data/assistant.lock
 
 # python
 __pycache__/
