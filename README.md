@@ -110,7 +110,7 @@ EDIT tools/app/discord_bot.py - added deep search option for full channel histor
 EDIT tools/app/discord_bot.py - added hourly filter
 EDIT tools/app/discord_bot.py - added mention only toggle
 EDIT config.py - added current time to the prompt
-CREATED tools/browser.py - web search via SearXNG and FUckFuckGo
+CREATED tools/browser.py - web search via SearXNG and DuckDuckGo
 
 13.05.2026
 CREATED finetune_dpo.py - DPO training pipeline (adapted from MEng dissertation project)

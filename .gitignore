@@ -9,6 +9,7 @@ data/training/
 data/active_reminders.json
 data/session_state.json
 data/assistant.lock
+agent/results
 
 # python
 __pycache__/
