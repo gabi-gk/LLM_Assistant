@@ -6,6 +6,7 @@ Allows the assistant to read, write, append, and create files, as well as list d
 '''
 from pathlib import Path
 from config import DEBUG, SEARCH_DIRS
+import tkinter.messagebox as messagebox
 
 def find_file(filename):
     """
@@ -154,12 +155,16 @@ def list_directory(path="."):
         return f"[ERROR] Could not list directory: {e}"
 
 
-def confirm(prompt):
+def confirm(prompt, use_gui=True):
     """ 
     Ask for confirmation and return true if confirmed
 
     prompt: the confirmation message to show
+    use_gui: true for tray, false for terminal
     returns True if the user confirms, False otherwise
     """
-    response = input(f"\n[CONFIRM] {prompt} (y/n): ").strip().lower()
-    return response in ("y", "yes")
+    if use_gui:
+        return messagebox.askyesno("Marvin — Confirm", prompt)
+    else:
+        response = input(f"\n[CONFIRM] {prompt} (y/n): ").strip().lower()
+        return response in ("y", "yes")

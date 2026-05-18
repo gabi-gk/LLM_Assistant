@@ -10,6 +10,7 @@ Provides a secure interface for running shell commands with risk-based gating
 
 import subprocess
 from pathlib import Path
+import tkinter.messagebox as messagebox
 
 # fully blocked destructive commands
 BLOCKED_COMMANDS = {
@@ -81,12 +82,16 @@ def classify(cmd):
     return "safe"
 
 
-def confirm(prompt):
+def confirm(prompt, use_gui=True):
     """ 
     Ask for confirmation and return true if confirmed
 
     prompt: the confirmation message to show
+    use_gui: true for tray, false for terminal
     returns True if the user confirms, False otherwise
     """
-    response = input(f"\n[CONFIRM] {prompt} (y/n): ").strip().lower()
-    return response in ("y", "yes")
+    if use_gui:
+        return messagebox.askyesno("Marvin — Confirm", prompt)
+    else:
+        response = input(f"\n[CONFIRM] {prompt} (y/n): ").strip().lower()
+        return response in ("y", "yes")

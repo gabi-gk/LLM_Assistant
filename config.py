@@ -25,7 +25,6 @@ K_SECTION = 6
 REMINDERS_FILE = "./data/active_reminders.json"
 LOCK_FILE = "./data/assistant.lock"
 RESTORE_LAST_SESSION = True
-MAX_RESTORE_MESSAGES = 10
 
 # System used
 OS = platform.system()  # "Windows" or "Linux"

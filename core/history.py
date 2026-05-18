@@ -10,7 +10,7 @@ import os
 import torch
 from datetime import datetime
 from pathlib import Path
-from config import LOGS_DIR, SESSION_FILE, RESTORE_LAST_SESSION, MAX_RESTORE_MESSAGES
+from config import LOGS_DIR, SESSION_FILE, RESTORE_LAST_SESSION
 
 def save_session_state(state):
     """
@@ -102,14 +102,16 @@ def load_last_session():
                 data = json.load(f)
             conversation = data.get("conversation", [])
             if conversation:
-                restored = conversation[-MAX_RESTORE_MESSAGES:]
-                print(f"[SESSION] Restored {len(restored)} messages from current session")
-                return restored
+                print(f"[SESSION] Restored {len(conversation)} messages from current session")
+                return conversation
         except Exception as e:
             print(f"[SESSION] Could not restore current session: {e}")
 
     # fallback: find the most recent log by filename — they're timestamped
-    logs = sorted(logs_path.glob("*.json"), reverse=True)
+    logs = sorted(
+        [f for f in logs_path.glob("*.json") if f.name != "current_session.json"],
+        reverse=True
+    )
     if not logs:
         return []
 
@@ -121,11 +123,8 @@ def load_last_session():
         if not conversation:
             return []
 
-        # only restore the last N messages (Config)
-        restored = conversation[-MAX_RESTORE_MESSAGES:]
-
-        print(f"[SESSION] Restored {len(restored)} messages from {logs[0].name}")
-        return restored
+        print(f"[SESSION] Restored {len(conversation)} messages from {logs[0].name}")
+        return conversation
 
     except Exception as e:
         print(f"[SESSION] Could not restore last session: {e}")
@@ -192,7 +191,7 @@ def compact_history(model, tokenizer, history, threshold=16, keep_recent=6):
     # split into old chunk and recent messages
     old_chunk = history[:-keep_recent]
     recent = history[-keep_recent:]
-    
+
     print("\n[Compacting conversation history...]\n")
     summary = summarise_history(model, tokenizer, old_chunk)
     

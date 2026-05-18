@@ -117,7 +117,7 @@ CREATED finetune_dpo.py - DPO training pipeline (adapted from MEng dissertation 
 CREATED prepare_training_data.py - generate synthetic fine-tuning pairs 
 EDIT finetune_dpo.py - fixed to work with prepare_training.py data
 
-14.05.2025
+14.05.2026
 TRAINED models/Marvin_v4 - via DPO fine-tune 
 EDIT config.py - updated SYSTEM_PROMPT with personality instructions
   personality emerging, system prompt + DPO working together
@@ -126,6 +126,11 @@ EDIT config.py - updated SYSTEM_PROMPT with personality instructions
 
 KNOWN ISSUES (resolved):
 - the model adds "How can I help" and a smiling face emoji in every message
+- Tray window confirmation prompts (write_file etc) appear in terminal not in GUI
+
+18.05.2026
+EDIT history.py - made logs save full history not the summary
+CREATED log_review.py - to quickly sorft through logs and pick up the training data
 
 KNOWN ISSUES:
 - Tool calling format inconsistent (XML vs JSON) - to finetune
@@ -133,15 +138,12 @@ KNOWN ISSUES:
 - The model will be inconsistent with the tools (e.g. file_path instead of path) - to finetune
 - the model runs incorrect commands when searching the RAG (search_knowdge base 90% of the time) - to finetune
 - Alt+Space does not toggle window close if already open
-- Tray window confirmation prompts (write_file etc) appear in terminal not in GUI
-- No way to see tool execution in tray window (confirmation is terminal only)
 - schedule reminders is not tracked in list_reminders
 - if something is saved during the session, it will not be accessible to the model until restart
 - Persistent reminder timer resets on code reset
 - format_context truncates large documents at 3000 chars
 - doesnt execute discord commands properly without help (once finetuned search_conversation_logs can be added again) - to finetune
-- timezone mismatch - check later
-- the log does not appear correctly on the app/restore issues
+- timezone/current time doesn't work
 
 EXTRA TASKS:
 - Hotkey definition to be added to config
@@ -157,3 +159,4 @@ EXTRA TASKS:
 - make discord start config (autostart vs start on demand)
 - duckduck links need to be stripped from the duck duck
 - let discord bot verion of Marvin use the internet tools (maybe)
+- save_page tool — fetch full page without char cap for archiving articles

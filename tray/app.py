@@ -38,6 +38,7 @@ class TrayApp:
         self.streamer = None
         self.rag = None
         self.conversation_history = []
+        self.full_history = []
         self.window = None
         self.tray = None
         self.ready = False
@@ -59,11 +60,19 @@ class TrayApp:
 
         restore_reminders() # check for any acive reminders and restore them
 
-        self.conversation_history = load_last_session() # load the last conversation history and session state, if it exists
-        
-        # populate chat window with restored history if present
+        loaded = load_last_session()
+        self.full_history = loaded
+        self.conversation_history = list(loaded)  # copy; compaction will trim this independently
+
         if self.conversation_history:
-            self.window.load_history(self.conversation_history)
+            # summarise the restored history so the model gets manageable context from the start
+            self.conversation_history = compact_history(
+                self.model, self.tokenizer,
+                self.conversation_history,
+                threshold=COMPACTION_THRESHOLD,
+                keep_recent=COMPACTION_KEEP_RECENT
+            )
+            self.window.load_history(self.full_history)
             self.window.append_message("System", "Previous session restored.", "system")
 
         self.ready = True
@@ -84,32 +93,27 @@ class TrayApp:
             return "Model is still loading, please wait..."
 
         # handle pre-defined special commands
-        if user_input.lower() == "clear": # clear conversation history and session state
-            save_conversation(self.conversation_history)
+        if user_input.lower() == "clear":
+            save_conversation(self.full_history)
             save_session_state("cleared")
             self.conversation_history = []
+            self.full_history = []
             self.window.clear_display()
             return "History cleared"
 
-        self.conversation_history.append({ # save conversation history
-            "role": "user",
-            "content": user_input
-        })
+        self.conversation_history.append({"role": "user", "content": user_input})
+        self.full_history.append({"role": "user", "content": user_input})
 
-        # run the AI agent to get a response, passing the history with context if available
         reply = run_agent(
             self.model, self.tokenizer,
             self.conversation_history,
             self.streamer
         )
 
-        # Keep track of the conversation history, including the assistant's replies
-        self.conversation_history.append({
-            "role": "assistant",
-            "content": reply
-        })
+        self.conversation_history.append({"role": "assistant", "content": reply})
+        self.full_history.append({"role": "assistant", "content": reply})
 
-        # compact long conversation history to provide less input to the model while keeping the relevant context
+        # compact only the model context — full_history is never touched
         self.conversation_history = compact_history(
             self.model, self.tokenizer,
             self.conversation_history,
@@ -117,9 +121,8 @@ class TrayApp:
             keep_recent=COMPACTION_KEEP_RECENT
         )
 
-        # Save the current session state; reset to "closed" so post-clear messages are recoverable on crash
         save_session_state("closed")
-        save_current_session(self.conversation_history)
+        save_current_session(self.full_history)
 
         return reply
 
@@ -138,7 +141,7 @@ class TrayApp:
         """
         Save conversation as a timestamp and fully quit
         """
-        save_conversation(self.conversation_history)  # creates timestamped file
+        save_conversation(self.full_history)  # creates timestamped file
         save_session_state("closed")
         
         # remove the current file so it can be used by the next session
