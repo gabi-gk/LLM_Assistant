@@ -2,7 +2,7 @@
 Discord bot integration
 - Runs as a background thread alongside the tray app
 - Shares the same model instance for consistent responses
-- Knowledge base access only — no file system or tool execution for security
+- Knowledge base access only - no file system or tool execution for security
 - Logs all conversations for fine-tuning data collection
 - Full chat history access
 - Mentions and pings via a custom tool that looks up guild members by name
@@ -43,7 +43,7 @@ discord_histories = {}
 current_channel = None  # track the current channel for deep_history
 bot_loop = None # bot's event loop for running async tasks from sync code
 
-MAX_DISCORD_HISTORY = 20  # keep last N messages per user
+MAX_DISCORD_HISTORY = 5  # keep last N messages per user
 
 
 def set_discord_model(model, tokenizer, rag):
@@ -65,7 +65,7 @@ def start_discord_bot():
     """
     token = os.getenv("DISCORD_TOKEN") # get the bot token from env
     if not token:
-        print("[DISCORD] No DISCORD_TOKEN found in .env — Discord bot disabled")
+        print("[DISCORD] No DISCORD_TOKEN found in .env - Discord bot disabled")
         return
 
     def run_bot():
@@ -273,7 +273,7 @@ def generate_discord_response(user_id, username, user_message, channel_context="
         })
 
     if final_response is None:
-        final_response = "[I reached my turn limit — please try rephrasing your question]"
+        final_response = "[I reached my turn limit - please try rephrasing your question]"
 
     mention_pattern = re.compile(r'<@\d+>')
     for msg in working_history:
@@ -348,7 +348,7 @@ async def find_member(guild, username):
     
     return None
 
-async def recent_channel_context(channel, limit=20):
+async def recent_channel_context(channel, limit=5):
     '''
     Get the last N messages for context for the AI
 

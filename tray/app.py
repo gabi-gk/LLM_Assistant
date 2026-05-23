@@ -13,7 +13,7 @@ import sys
 from PIL import Image, ImageDraw
 import pystray
 import keyboard
-from config import DEBUG, COMPACTION_THRESHOLD, COMPACTION_KEEP_RECENT, LOGS_DIR
+from config import DEBUG, COMPACTION_THRESHOLD, COMPACTION_KEEP_RECENT, LOGS_DIR, HOTKEY
 from core.model import load_model, create_streamer
 from core.history import compact_history, save_conversation, save_current_session, load_last_session, save_session_state
 from core.rag import RAG
@@ -63,6 +63,21 @@ class TrayApp:
         loaded = load_last_session()
         self.full_history = loaded
         self.conversation_history = list(loaded)  # copy; compaction will trim this independently
+
+        # inject self model directly — no agent loop, no side effects
+        if not self.conversation_history:  # fresh session only
+            self_model_path = Path("data/information/marvin_self.md")
+            if self_model_path.exists():
+                self_model = self_model_path.read_text(encoding="utf-8")
+                self.conversation_history.append({
+                    "role": "user",
+                    "content": f"[Startup context — your self model]\n{self_model}"
+                })
+                self.conversation_history.append({
+                    "role": "assistant",
+                    "content": "."
+                })
+                print("[TRAY] Self model injected into context")
 
         if self.conversation_history:
             # summarise the restored history so the model gets manageable context from the start
@@ -154,10 +169,13 @@ class TrayApp:
 
     def on_show(self):
         """
-        Show the chat window on hotkey press, if it's not already visible
+        Toggle the chat window on hotkey press
         """
         if self.window:
-            self.window.show()
+            if self.window.visible:
+                self.window.hide()
+            else:
+                self.window.show()
 
     def run(self):
         """
@@ -173,9 +191,8 @@ class TrayApp:
         # daemon thread will automatically exit the tray app when main thread exits
         threading.Thread(target=self.initialise, daemon=True).start()
 
-        # register hotkey - add to config later?
         # global hotkey to show the chat window, works even when the app is not focused
-        keyboard.add_hotkey("alt+space", self.on_show)
+        keyboard.add_hotkey(HOTKEY, self.on_show)
 
         # build right click menu
         menu = pystray.Menu(

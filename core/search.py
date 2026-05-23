@@ -60,9 +60,9 @@ def search_rag(rag, user_input, conversation_history):
     k = get_search_k(user_input)
     search_query = build_search_query(user_input, conversation_history)
 
-    # similarity search — finds semantically related content
+    # similarity search - finds semantically related content
     similarity_chunks = rag.search(search_query, top_k=k)
-    # keyword search — finds chunks that literally contain the keywords from the query
+    # keyword search - finds chunks that literally contain the keywords from the query
     keyword_chunks = rag.search_by_keyword(user_input)[:10]
     if DEBUG:
         print(f"[DEBUG] Keyword search → {len(keyword_chunks)} chunks")

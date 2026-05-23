@@ -109,9 +109,7 @@ def search_conversation_logs(query):
 
 def update_self_model(observation):
     """
-    Append a new observation to Marvin's self model file.
-    Called when Marvin learns something new about himself or Fenn
-    worth remembering across sessions.
+    Append a new observation to Marvin's self model file called by the model without the need for user input
 
     observation: the fact or observation to save
     returns: success or error message
@@ -121,8 +119,8 @@ def update_self_model(observation):
     if not path.exists():
         return f"[ERROR] Self model not found at {SELF_MODEL_PATH}"
     
-    timestamp = datetime.now().strftime("%Y-%m-%d")
-    entry = f"\n- [{timestamp}] {observation}"
+    timestamp = datetime.now().strftime("%Y-%m-%d") 
+    entry = f"\n- [{timestamp}] {observation}" # Timestamp his observations
     
     try:
         with open(path, "a", encoding="utf-8") as f:
@@ -132,3 +130,22 @@ def update_self_model(observation):
         return f"[SUCCESS] Noted: {observation}"
     except Exception as e:
         return f"[ERROR] Could not update self model: {e}"
+    
+def edit_self_model(old_text, new_text):
+    """
+    Replace a specific line in the self model file
+
+    old_text: text to be replaced
+    returns: success or error message
+    """
+    path = Path(SELF_MODEL_PATH)
+    if not path.exists():
+        return "[ERROR] Self model not found"
+    
+    content = path.read_text(encoding="utf-8")
+    if old_text not in content:
+        return f"[ERROR] Text not found: {old_text}"
+    
+    updated = content.replace(old_text, new_text, 1) # replace the specific string
+    path.write_text(updated, encoding="utf-8")
+    return f"[SUCCESS] Updated self model"

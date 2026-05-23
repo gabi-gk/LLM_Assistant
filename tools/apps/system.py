@@ -1,3 +1,9 @@
+'''
+Application mangament for Marvin
+- Open an app
+- Find an installed app
+'''
+
 import subprocess
 from config import OS
 from pathlib import Path
@@ -7,29 +13,29 @@ def open_application(name):
     Open an application by name or common shortcut
     Searches Start Menu, common paths and Windows built-in shortcuts
 
-    name: application name or keyword e.g. "settings"
+    name: application name or keyword 
     returns: success or error message
     """
     if OS == "Windows":
         # Windows built-in shortcuts and ms-settings URIs
         builtins = {
-            "settings":        "ms-settings:",
-            "wifi":            "ms-settings:network-wifi",
-            "bluetooth":       "ms-settings:bluetooth",
-            "display":         "ms-settings:display",
-            "sound":           "ms-settings:sound",
-            "apps":            "ms-settings:appsfeatures",
-            "updates":         "ms-settings:windowsupdate",
-            "defender":        "windowsdefender:",
-            "calculator":      "calc",
-            "notepad":         "notepad",
-            "explorer":        "explorer",
-            "task manager":    "taskmgr",
-            "device manager":  "devmgmt.msc",
-            "disk cleanup":    "cleanmgr",
-            "control panel":   "control",
-            "cmd":             "cmd",
-            "powershell":      "powershell",
+            "settings": "ms-settings:",
+            "wifi": "ms-settings:network-wifi",
+            "bluetooth": "ms-settings:bluetooth",
+            "display": "ms-settings:display",
+            "sound": "ms-settings:sound",
+            "apps": "ms-settings:appsfeatures",
+            "updates": "ms-settings:windowsupdate",
+            "defender": "windowsdefender:",
+            "calculator": "calc",
+            "notepad": "notepad",
+            "explorer": "explorer",
+            "task manager": "taskmgr",
+            "device manager": "devmgmt.msc",
+            "disk cleanup": "cleanmgr",
+            "control panel": "control",
+            "cmd": "cmd",
+            "powershell": "powershell",
         }
 
         name_lower = name.lower().strip()
@@ -45,11 +51,11 @@ def open_application(name):
             except Exception as e:
                 return f"[ERROR] Could not open '{name}': {e}"
 
-        # check the app exists in PATH before launching — Popen with shell=True never raises for missing commands
-        check = subprocess.run(f'where "{name}"', shell=True, capture_output=True)
+        # check the app exists in PATH before launching 
+        check = subprocess.run(f'where "{name}"', shell=True, capture_output=True) # process open waits for the process to finish
         if check.returncode != 0:
             return f"[ERROR] '{name}' not found. Try find_application to search for it."
-        subprocess.Popen(name, shell=True)
+        subprocess.Popen(name, shell=True) # non-blocking process open lanuches immediately
         return f"[SUCCESS] Launched '{name}'"
 
     elif OS == "Linux":

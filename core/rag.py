@@ -94,12 +94,12 @@ class RAG:
 
         if not path.exists(): # if the directory doesn't exist, create it and prompt user to add files
             os.makedirs(path)
-            print(f"[RAG] Created directory {directory} — add files here to index them.")
+            print(f"[RAG] Created directory {directory} - add files here to index them.")
             return
 
         files = [f for f in path.rglob("*") if f.suffix in supported] # find all supported files in this directory and subdirectories
 
-        print(f"[DEBUG] {directory} — found {len(files)} files: {[f.name for f in files]}")
+        print(f"[DEBUG] {directory} - found {len(files)} files: {[f.name for f in files]}")
         if not files:
             print(f"[RAG] No supported files found in {directory}")
             return

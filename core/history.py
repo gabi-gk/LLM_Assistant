@@ -107,7 +107,7 @@ def load_last_session():
         except Exception as e:
             print(f"[SESSION] Could not restore current session: {e}")
 
-    # fallback: find the most recent log by filename — they're timestamped
+    # fallback: find the most recent log by filename - they're timestamped
     logs = sorted(
         [f for f in logs_path.glob("*.json") if f.name != "current_session.json"],
         reverse=True
@@ -179,8 +179,8 @@ def compact_history(model, tokenizer, history, threshold=16, keep_recent=6):
     """
     When history gets long, summarise the older messages and keep the recent exchanges intact
     
-    threshold — how many messages before compaction triggers
-    keep_recent — how many recent messages to always preserve 
+    threshold - how many messages before compaction triggers
+    keep_recent - how many recent messages to always preserve 
 
     returns a new history with the older messages replaced by a summary
     """

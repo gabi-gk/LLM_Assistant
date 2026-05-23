@@ -6,7 +6,7 @@ Allows the assistant to read, write, append, and create files, as well as list d
 '''
 from pathlib import Path
 from config import DEBUG, SEARCH_DIRS
-import tkinter.messagebox as messagebox
+from core.utils import confirm
 
 def find_file(filename):
     """
@@ -35,6 +35,17 @@ def read_file(path):
     path: the path to the file to read, or just a filename to search for
     returns the file contents, or an error message if the file cannot be read
     """
+    if "marvin_self" in path: # Always return full content for the self file
+        print(f"[DEBUG] Reading self model from: {path}")
+        try:
+            with open(path, encoding="utf-8") as f:
+                content = f.read()
+            print(f"[DEBUG] Self model length: {len(content)} chars")
+            return f"[FILE: {path}]\n{content}"
+        except Exception as e:
+            return f"[ERROR] Could not read self model: {e}"
+
+    # Normal files get truncated
     if not any(c in path for c in ("/", "\\")) and not Path(path).exists(): 
         found = find_file(path)
         if found.startswith("[ERROR]"): # if the file returned an error, pass that back instead of trying to read it
@@ -153,18 +164,3 @@ def list_directory(path="."):
         return result
     except Exception as e:
         return f"[ERROR] Could not list directory: {e}"
-
-
-def confirm(prompt, use_gui=True):
-    """ 
-    Ask for confirmation and return true if confirmed
-
-    prompt: the confirmation message to show
-    use_gui: true for tray, false for terminal
-    returns True if the user confirms, False otherwise
-    """
-    if use_gui:
-        return messagebox.askyesno("Marvin — Confirm", prompt)
-    else:
-        response = input(f"\n[CONFIRM] {prompt} (y/n): ").strip().lower()
-        return response in ("y", "yes")

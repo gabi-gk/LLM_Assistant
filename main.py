@@ -3,13 +3,12 @@ Terminal only chat interface for debugging and development
 Runs the assistant without the GUI tray app
 '''
 
-from config import DEBUG, COMPACTION_THRESHOLD, COMPACTION_KEEP_RECENT
+from config import COMPACTION_THRESHOLD, COMPACTION_KEEP_RECENT
 from core.model import load_model, create_streamer
 from core.history import compact_history, save_conversation, load_last_session, save_session_state
 from core.rag import RAG
 from agent.loop import run_agent
 from tools.notifications import restore_reminders
-from core.search import search_rag
 from core.lock import acquire_lock, release_lock
 from tools.knowledge import set_rag
 import os

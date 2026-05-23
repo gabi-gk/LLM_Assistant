@@ -1,16 +1,12 @@
 # model weights 
 models/
 
-# database and runtime data
-data/chroma/
-data/logs/
-data/information/
-data/training/
-data/active_reminders.json
-data/session_state.json
-data/assistant.lock
-data/experiments
-agent/results
+# runtime data
+data/
+
+# results
+results/
+training/used_data/
 
 # python
 __pycache__/

@@ -18,10 +18,10 @@ class Chunker:
         """
         Split plain text into overlapping chunks to ensure text isn't lost at boundaries
 
-        text — the full text to split
-        filepath — the source file path, used for metadata in the chunk dict
-        chunk_size — characters per chunk
-        overlap — characters shared between adjacent chunks
+        text - the full text to split
+        filepath - the source file path, used for metadata in the chunk dict
+        chunk_size - characters per chunk
+        overlap - characters shared between adjacent chunks
         returns a list of dicts with keys: text, source (filepath), type (text), name (filename)
         """
         chunks = []
@@ -46,7 +46,7 @@ class Chunker:
         Split a .py file into function/class per chunk
         Uses AST (abstract syntax tree) so it splits on the function's actual ending
 
-        filepath — the path to the .py file
+        filepath - the path to the .py file
         returns a list of dicts with keys: text, source (filepath), type (function/class/file_header), name (function/class name or filename)
         """
         chunks = []
@@ -86,9 +86,9 @@ class Chunker:
     @staticmethod
     def chunk_pdf(filepath):
         """
-        Extract text from PDF using adaptive splitting — tries multiple strategies and picks the best result
+        Extract text from PDF using adaptive splitting - tries multiple strategies and picks the best result
 
-        filepath — the path to the PDF file
+        filepath - the path to the PDF file
         returns a list of dicts with keys: text, source (filepath), type (text), name (filename)
         """
         reader = PdfReader(filepath)
@@ -174,7 +174,7 @@ class Chunker:
         if DEBUG:
             print(f"[DEBUG] Chunks created: {len(chunks)}")
             for i, c in enumerate(chunks[:3]):
-                print(f"  chunk {i}: {len(c['text'])} chars — '{c['text'][:80]}'")
+                print(f"  chunk {i}: {len(c['text'])} chars - '{c['text'][:80]}'")
 
         return chunks
     
@@ -183,7 +183,7 @@ class Chunker:
         """
         Detect section headings 
 
-        line — a line of text to check
+        line - a line of text to check
         returns True if the line looks like a heading, False otherwise
         """
         line = line.strip()

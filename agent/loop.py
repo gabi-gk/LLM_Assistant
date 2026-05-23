@@ -8,8 +8,9 @@ Lets the model call tools by including tool tags in the generated response
 import json
 import re
 from config import DEBUG, SYSTEM_PROMPT
-from agent.registry import TOOLS, TOOL_DESCRIPTIONS, tool_help
+from agent.registry import TOOLS, TOOL_DESCRIPTIONS
 from core.model import generate_response
+from core.utils import get_system_prompt
 
 def parse_tool_call(response):
     """
@@ -52,8 +53,8 @@ def run_agent(model, tokenizer, conversation_history, streamer, max_turns=5):
     streamer: the model's streamer for token-by-token generation
     max_turns: maximum number of tool calls before giving up and returning an error
     """
-    # combine base system prompt with tool descriptions
-    full_prompt = SYSTEM_PROMPT + TOOL_DESCRIPTIONS
+    # combine base system prompt with tool descriptions and add current time
+    full_prompt = get_system_prompt(SYSTEM_PROMPT) + TOOL_DESCRIPTIONS
     
     # run each time the assistant is prompted for a response
     for turn in range(max_turns):
@@ -87,4 +88,4 @@ def run_agent(model, tokenizer, conversation_history, streamer, max_turns=5):
             "content": f"<tool_result>{tool_result}</tool_result>"
         })
 
-    return "[ERROR] Max agent turns reached without final response"
+    return "[ERROR] I got stuck trying to reach a response."

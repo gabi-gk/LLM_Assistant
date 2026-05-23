@@ -9,6 +9,7 @@ OS-aware: uses pygetwindow on Windows, wmctrl on Linux
 import subprocess
 from config import OS
 import pygetwindow as gw
+from core.utils import confirm
 
 def list_open_windows():
     """
@@ -161,9 +162,7 @@ def close_window(title):
         if not matches:
             return f"[ERROR] No window found matching '{title}'"
         
-        print(f"\n[WINDOW] About to close: '{matches[0].title}'")
-        response = input(f"\n[CONFIRM] Close '{matches[0].title}'? (y/n): ").strip().lower()
-        if response not in ("y", "yes"):
+        if not confirm(f"Close '{matches[0].title}'?"): # get confirmation from the utility function
             return "[CANCELLED] Close cancelled"
         
         try:
@@ -171,7 +170,6 @@ def close_window(title):
             return f"[SUCCESS] Closed '{matches[0].title}'"
         except Exception as e:
             return f"[ERROR] Could not close window: {e}"
-
     elif OS == "Linux":
         result = subprocess.run(
             f'wmctrl -c "{title}"',
@@ -180,5 +178,4 @@ def close_window(title):
         if result.returncode != 0:
             return f"[ERROR] Could not close '{title}'"
         return f"[SUCCESS] Closed '{title}'"
-
     return f"[ERROR] Unsupported OS: {OS}"

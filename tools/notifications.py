@@ -12,9 +12,10 @@ import json
 from pathlib import Path
 from plyer import notification
 from config import REMINDERS_FILE
+from datetime import datetime, timedelta
 
 
-# active persistent reminders — key: reminder_id, value: stop Event
+# active persistent reminders- key: reminder_id, value: stop Event
 active_reminders = {}
 
 def save_reminders(reminders_data):
@@ -41,21 +42,43 @@ def load_reminders():
         return {}
 
 def restore_reminders():
-    """
-    Called on startup to restore any persistent reminders that were running when the assistant was last closed
-    """
+    '''
+    Restore existing reminders at app or pc reset
+    '''    
     saved = load_reminders()
     if not saved:
         return
 
     print(f"[REMINDERS] Restoring {len(saved)} active reminder(s)...")
     for reminder_id, data in saved.items():
-        persistent_reminder(
-            data["title"],
-            data["message"],
-            data["interval_minutes"],
-            reminder_id=reminder_id   # restore with original ID
-        )
+        # calculate remaining time from saved next_trigger_time
+        next_trigger_str = data.get("next_trigger_time")
+        
+        if next_trigger_str:
+            next_trigger = datetime.fromisoformat(next_trigger_str)
+            remaining_seconds = (next_trigger - datetime.now()).total_seconds()
+            # if already past due, fire immediately
+            remaining_seconds = max(0, remaining_seconds)
+        else:
+            remaining_seconds = 0
+
+        if data.get("type") == "scheduled":
+            # restore as one-time reminder with remaining time
+            remaining_minutes = remaining_seconds / 60
+            schedule_reminder(
+                data["title"],
+                data["message"],
+                remaining_minutes if remaining_minutes > 0 else 0.1
+            )
+        else:
+            # restore persistent reminder - first fire after remaining time
+            persistent_reminder(
+                data["title"],
+                data["message"],
+                data["interval_minutes"],
+                reminder_id=reminder_id,
+                initial_delay_seconds=remaining_seconds # preserve schedule
+            )
 
 def send_notification(title, message):
     """
@@ -84,64 +107,133 @@ def schedule_reminder(title, message, delay_minutes):
     message: the body text of the notification
     delay_minutes: how many minutes to wait before sending the notification
     """
+    safe_title = title.replace(" ", "_")
+    reminder_id = f"{safe_title}_{int(time.time())}"
+    
+    stop_event = threading.Event()
+    active_reminders[reminder_id] = stop_event
+
+    next_trigger = datetime.now() + timedelta(minutes=delay_minutes)
+    save_reminder_to_disk( # make sure to save the notification to the disc
+        reminder_id, title, message,
+        delay_minutes=delay_minutes,
+        next_trigger_time=next_trigger.isoformat(),
+        reminder_type="scheduled"
+    )
+
     def remind():
-        time.sleep(delay_minutes * 60)
-        send_notification(title, message)
+        '''
+        the background function that keeps track of the notification until cancelled
+        '''
+        # cound down for easy interrupt for cancelation
+        for _ in range(int(delay_minutes * 60)):
+            if stop_event.is_set():
+                remove_reminder_from_disk(reminder_id)
+                return
+            time.sleep(1)
+        
+        send_notification(title, message) # fire after delay
+        
+        # remove from the disc and active reminders list
+        if reminder_id in active_reminders:
+            del active_reminders[reminder_id]
+        remove_reminder_from_disk(reminder_id)
 
-    thread = threading.Thread(target=remind, daemon=True) # run in background so it doesn't block the main app
-    thread.start() 
-    return f"[SUCCESS] Reminder set for {delay_minutes} minutes: {title}"
+    threading.Thread(target=remind, daemon=True).start() # start the reminder
+    return f"[SUCCESS] Reminder set for {delay_minutes} minutes: {title} (id: {reminder_id})"
 
 
-def persistent_reminder(title, message, interval_minutes, reminder_id=None):
+def persistent_reminder(title, message, interval_minutes, reminder_id=None, initial_delay_seconds=0):
     """
     Send a notification repeatedly at set intervals until cancelled
     
     title: the title of the notification
-    message: the body text of the notification
+    message: the text of the notification
     interval_minutes: how many minutes to wait between notifications
-    reminder_id: (optional) a unique ID for this reminder, if not provided one will be generated
+    reminder_id: unique ID generated if not provided, passed when restoring
+    initial_delay_seconds: seconds to wait before first fire - used when restoring a reminder
     returns a unique reminder ID that can be used to edit or cancel the reminder
     """
-    if reminder_id is None: # generate a unique ID if one isn't provided
-        # replace spaces so ID is clean and unambiguous for the model
-        safe_title = title.replace(" ", "_")
+    if reminder_id is None:
+        safe_title = title.replace(" ", "_") # strip name 
         reminder_id = f"{safe_title}_{int(time.time())}"
 
-    stop_event = threading.Event() # used to signal the reminder thread to stop when the reminder is cancelled
+    stop_event = threading.Event()
     active_reminders[reminder_id] = stop_event
 
-    # save to disk so reminder survives restarts
-    saved = load_reminders()
-    saved[reminder_id] = {
-        "title": title,
-        "message": message,
-        "interval_minutes": interval_minutes
-    }
-    save_reminders(saved)
+    next_trigger = datetime.now() + timedelta(minutes=interval_minutes) # next trigger time
+    save_reminder_to_disk( # save to disk for restore
+        reminder_id, title, message,
+        interval_minutes=interval_minutes,
+        next_trigger_time=next_trigger.isoformat(),
+        reminder_type="persistent"
+    )
 
     def remind_loop():
         '''
-        the background function that notfies at the set inverval until cancelled
+        background functionthat fires at intervals until cancelled, delay 0 for new ones, calculated delay after restart
         '''
+        if initial_delay_seconds > 0:
+             # cound down for easy interrupt for cancelation
+            for _ in range(int(initial_delay_seconds)):
+                if stop_event.is_set():
+                    remove_reminder_from_disk(reminder_id)
+                    return
+                time.sleep(1)
+        
+        # fire then wait at set interval until cancelled
         while not stop_event.is_set():
             send_notification(title, message)
-            # check stop_event every second so cancellation is responsive
+            update_next_trigger_time(reminder_id, interval_minutes)
             for _ in range(int(interval_minutes * 60)):
                 if stop_event.is_set():
                     break
                 time.sleep(1)
+        
+        remove_reminder_from_disk(reminder_id)
 
-        # clean up from disk when stopped
-        saved = load_reminders()
-        if reminder_id in saved:
-            del saved[reminder_id]
-            save_reminders(saved)
-
-    thread = threading.Thread(target=remind_loop, daemon=True) # run in background so it doesn't block the main app
-    thread.start()
+    threading.Thread(target=remind_loop, daemon=True).start() # start the reminder
     return f"[SUCCESS] Persistent reminder started (id: {reminder_id}): {title}"
 
+def save_reminder_to_disk(reminder_id, title, message, interval_minutes=None, delay_minutes=None, next_trigger_time=None, reminder_type="persistent"):
+    """
+    Save a reminder to disk with full state including next trigger time.
+    Called by both schedule_reminder and persistent_reminder.
+    """
+    saved = load_reminders()
+    saved[reminder_id] = {
+        "title": title,
+        "message": message,
+        "type": reminder_type,
+        "interval_minutes": interval_minutes,
+        "delay_minutes": delay_minutes,
+        "next_trigger_time": next_trigger_time 
+    }
+    save_reminders(saved)
+
+
+def remove_reminder_from_disk(reminder_id):
+    """
+    Remove a reminder from disk when cancelled or fired.
+    Called by both schedule_reminder and persistent_reminder.
+    """
+    saved = load_reminders()
+    if reminder_id in saved:
+        del saved[reminder_id]
+        save_reminders(saved)
+
+
+def update_next_trigger_time(reminder_id, interval_minutes):
+    """
+    Update the next trigger time on disk after each firing.
+    Allows correct restore after restart.
+    """
+    from datetime import datetime, timedelta
+    saved = load_reminders()
+    if reminder_id in saved:
+        next_trigger = datetime.now() + timedelta(minutes=interval_minutes)
+        saved[reminder_id]["next_trigger_time"] = next_trigger.isoformat()
+        save_reminders(saved)
 
 def cancel_reminder(reminder_id):
     """

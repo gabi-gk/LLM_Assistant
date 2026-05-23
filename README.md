@@ -7,10 +7,12 @@ Window management tools — switch tabs, get open windows
 Discord bot API
 Conversation logger + fine-tune queue
 LoRA/SFT pipeline — adapt existing DPO setup
+Let Marvin access and modify his own file describing himself for personality direction
 Adapter versioning
 Linux port — OS-aware tool layer, Arch-specific tools
 browser extension to control active browser tabs
-Let Marvin access and modify his own file describing himself for personality direction
+Merge all the adapters for one clear Marvin 
+Actual screen tracker
 
 26.04.2026
 CREATED check_gpu.py - verify CUDA and VRAM before running
@@ -105,7 +107,6 @@ EDIT tray/app.py - Discord bot starts on startup with shared model
 CREATED tools/apps/discord_bot.py - added clear and improved logging
 EDIT tools/app/discord_bot.py - added deep search option for full channel history
 
-
 10.05.2026
 EDIT tools/app/discord_bot.py - added hourly filter
 EDIT tools/app/discord_bot.py - added mention only toggle
@@ -123,6 +124,9 @@ EDIT config.py - updated SYSTEM_PROMPT with personality instructions
   personality emerging, system prompt + DPO working together
   TODO: real conversation logs needed for full personality development
   TODO: self model tool, SFT pipeline for tool syntax
+CREATED data/information/marvin_self_model.md - Marvin's identity and self knowledge file
+EDIT tools/knowledge.py - added update_self_model tool
+EDIT tray/window.py - GUI confirmation dialog replacing terminal input
 
 KNOWN ISSUES (resolved):
 - the model adds "How can I help" and a smiling face emoji in every message
@@ -130,33 +134,50 @@ KNOWN ISSUES (resolved):
 
 18.05.2026
 EDIT history.py - made logs save full history not the summary
+EDIT tray/app.py - compaction only touches conversation_history, logs always full
 CREATED log_review.py - to quickly sorft through logs and pick up the training data
 
-KNOWN ISSUES:
-- Tool calling format inconsistent (XML vs JSON) - to finetune
-- Model inputs wrong arguments occasionally (e.g. list_reminders with args) - to finetune
-- The model will be inconsistent with the tools (e.g. file_path instead of path) - to finetune
-- the model runs incorrect commands when searching the RAG (search_knowdge base 90% of the time) - to finetune
+20.05.2026
+CREATED training/prepare_SFT_data.py - generated SFT training data
+CREATED training/prepare_DPO_data.py - separated prepare_training_data.py to be usable by both methods
+CREATED finetune_sft.py - copied the DPO framework and adjusted it for SFT
+MOVED finetune_dpo.py to training/
+CREATED log_review.py - simple log clear up script
+EDIT tray/app.py - self model injected directly into context on startup (no agent loop)
+EDIT config.py - identity moved from SYSTEM_PROMPT to self model file
+
+21.05.2026
+EDIT knowledge.py - added ability for Marvin to edit his self model
+CREATE core/utils.py - added for functions used by multiple scripts
+EDIT core/utils.py - add confirmation function
+EDIT core/utils.py - added correct time and timezone information and injected into the prompt
+EDIT config.py - Hotkey definition added to config
+
+KNOWN ISSUES (resolved):
 - Alt+Space does not toggle window close if already open
 - schedule reminders is not tracked in list_reminders
-- if something is saved during the session, it will not be accessible to the model until restart
-- Persistent reminder timer resets on code reset
+- close_window confirmation not triggering in tray
+- persistant reminder time tracker after reset
+
+22.05.2026
+EDIT notifications.py - fixed schedule reminder tracking
+EDIT notifications.py - fixed reminders trigger on reset
+
+KNOWN ISSUES:
+- if something is saved during the session, it will not be accessible to Marvin until restart
 - format_context truncates large documents at 3000 chars
 - doesnt execute discord commands properly without help (once finetuned search_conversation_logs can be added again) - to finetune
-- timezone/current time doesn't work
+- Marvin sometimes says he completed a task before actually doing it (fabricated confirmation)
 
 EXTRA TASKS:
-- Hotkey definition to be added to config
-- move confirmation function to a separate utility script
 - make the reminders remain on the screen until snoozed/confirmed
 - Reminder escalation — auto open chat if unconfirmed after X minutes with contextual proactive message from Marvin
 - Allow the data from RAG to be deleted
-- Synthetically generated data to finetune the model with correct commands and their syntax
 - on save default to data/information unless the user specifies otherwise - to finetune
 - image generation
-- time awareness with datetime
-- timestamped logs and a timeframe filter
-- make discord start config (autostart vs start on demand)
 - duckduck links need to be stripped from the duck duck
-- let discord bot verion of Marvin use the internet tools (maybe)
 - save_page tool — fetch full page without char cap for archiving articles
+- merge DPO and SFT models into a single one
+- Real conversation log DPO
+- Startup self model needs to work on restore not just fresh sessions.
+- Make discord be an optional feature

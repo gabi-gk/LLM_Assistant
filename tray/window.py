@@ -23,6 +23,7 @@ class ChatWindow:
         self.window = None
         self.input_field = None
         self.chat_display = None
+        self.visible = False
         self.build()
 
     def build(self):
@@ -220,12 +221,14 @@ class ChatWindow:
         self.window.lift()
         self.window.focus_force()
         self.input_field.focus()
+        self.visible = True
 
     def hide(self):
         """
         Hide to tray — model stays loaded
         """
         self.window.withdraw()
+        self.visible = False
 
     def run(self):
         """
