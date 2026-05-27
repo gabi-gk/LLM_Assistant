@@ -182,13 +182,23 @@ IMPORTANT RULES:
 
 - schedule_reminder - one-time desktop notification after a delay
   Use when user wants a single reminder at a specific time.
+  Optional: require_confirmation=true for reminders needing acknowledgement
+  Optional: snooze_minutes (default 5), escalation_minutes (default 5)
   Example: <tool>schedule_reminder</tool>
   <args>{"title": "Meeting", "message": "Time to meet", "delay_minutes": 30}</args>
-
+  Example with confirmation: 
+  <tool>schedule_reminder</tool>
+  <args>{"title": "Training", "message": "Workout", "delay_minutes": 60, "require_confirmation": true}</args>
+  
 - persistent_reminder - repeating notification at set intervals until cancelled
   Use for countdowns or repeatable information
+  Optional: require_confirmation=true for reminders needing acknowledgement
+  Optional: snooze_minutes (default 5), escalation_minutes (default 5)
   Example: <tool>persistent_reminder</tool>
   <args>{"title": "Break", "message": "Take a break", "interval_minutes": 60}</args>
+  Example with confirmation: 
+  <tool>persistent_reminder</tool>
+  <args>{"title": "Meds", "message": "Take your medication", "interval_minutes": 60, "require_confirmation": true}</args>
 
 - list_reminders - show all active reminders with their IDs
   Always call this before cancelling or editing to get the reminder ID

@@ -23,6 +23,7 @@ from agent.registry import get_discord_tools, DISCORD_TOOL_DESCRIPTIONS
 from config import DEBUG, LOGS_DIR, DISCORD_SYSTEM_PROMPT
 from agent.loop import parse_tool_call
 from datetime import datetime, timezone, timedelta
+from core.utils import get_system_prompt
 
 load_dotenv()  # load DISCORD_TOKEN from .env file
 
@@ -236,7 +237,7 @@ def generate_discord_response(user_id, username, user_message, channel_context="
         mention_user_func=mention_user
     )
 
-    full_prompt = DISCORD_SYSTEM_PROMPT + DISCORD_TOOL_DESCRIPTIONS
+    full_prompt = get_system_prompt(DISCORD_SYSTEM_PROMPT) + DISCORD_TOOL_DESCRIPTIONS
     final_response = None
 
     # try to generate a response with up to 3 calls

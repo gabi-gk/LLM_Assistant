@@ -1,6 +1,8 @@
 '''
-Terminal only chat interface for debugging and development
-Runs the assistant without the GUI tray app
+Terminal debug interface minimal version
+Does not include self model, full history and confirmations
+
+Use run.py for general use
 '''
 
 from config import COMPACTION_THRESHOLD, COMPACTION_KEEP_RECENT

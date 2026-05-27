@@ -13,13 +13,13 @@ import sys
 from PIL import Image, ImageDraw
 import pystray
 import keyboard
-from config import DEBUG, COMPACTION_THRESHOLD, COMPACTION_KEEP_RECENT, LOGS_DIR, HOTKEY
+from config import DEBUG, COMPACTION_THRESHOLD, COMPACTION_KEEP_RECENT, LOGS_DIR, HOTKEY, DISCORD_ENABLED
 from core.model import load_model, create_streamer
 from core.history import compact_history, save_conversation, save_current_session, load_last_session, save_session_state
 from core.rag import RAG
 from agent.loop import run_agent
 from tray.window import ChatWindow
-from tools.notifications import restore_reminders, send_notification
+from tools.notifications import restore_reminders, send_notification, set_escalation, set_tk_root
 from tools.knowledge import set_rag
 from tools.apps.discord_bot import set_discord_model, start_discord_bot
 
@@ -45,8 +45,31 @@ class TrayApp:
 
     def initialise(self):
         """
-        Load model and RAG — runs in background thread on startup
+        Load model and RAG - runs in background thread on startup
         """
+        # escalation callback before restory so anything still not done is restored
+        set_tk_root(self.window.window)
+
+        def escalation_handler(title, message):
+            """
+            Show urgent popup and inject chat message when a reminder is ignored past escalation time
+            """
+            # inject as a system trigger that Marvin responds to
+            self.window.show()
+            trigger = f"[REMINDER] Your '{title}' reminder was not confirmed: {message}"
+            self.conversation_history.append({"role": "user", "content": trigger})
+            self.full_history.append({"role": "user", "content": trigger})
+            
+            # generate Marvin's actual response
+            reply = run_agent(self.model, self.tokenizer, self.conversation_history, self.streamer)
+            
+            # Add to current conversation history
+            self.conversation_history.append({"role": "assistant", "content": reply})
+            self.full_history.append({"role": "assistant", "content": reply})
+            self.window.append_message("Marvin", reply, "ai")
+
+        set_escalation(escalation_handler)
+
         print("[TRAY] Loading model...")
         self.model, self.tokenizer = load_model()
         self.streamer = create_streamer(self.tokenizer)
@@ -55,8 +78,9 @@ class TrayApp:
         self.rag.index_all() # index any new data for RAG
         set_rag(self.rag)
 
-        set_discord_model(self.model, self.tokenizer, self.rag)
-        start_discord_bot()
+        if DISCORD_ENABLED:
+            set_discord_model(self.model, self.tokenizer, self.rag)
+            start_discord_bot()
 
         restore_reminders() # check for any acive reminders and restore them
 
@@ -64,7 +88,7 @@ class TrayApp:
         self.full_history = loaded
         self.conversation_history = list(loaded)  # copy; compaction will trim this independently
 
-        # inject self model directly — no agent loop, no side effects
+        # inject self model directly - no agent loop, no side effects
         if not self.conversation_history:  # fresh session only
             self_model_path = Path("data/information/marvin_self.md")
             if self_model_path.exists():

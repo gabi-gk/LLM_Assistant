@@ -43,7 +43,7 @@ def parse_tool_call(response):
     return tool_name, args
 
 
-def run_agent(model, tokenizer, conversation_history, streamer, max_turns=5):
+def run_agent(model, tokenizer, conversation_history, streamer, max_turns=8):
     """
     Generates a response, checks for tool calls, executes them and feeds results back until no more tool calls
     
