@@ -173,20 +173,28 @@ EDIT tray/app.py - connect the notifications to the tray app
 27.05.2026
 EDIT loop.py - increase the turn limit
 
+28.05.2026
+EDIT app.py - added self injection also on session restore
+EDIT files.py - added reindex on write/append to file
+EDIT knowledge.py - added callable reindex_knowledge_base and delete_from_knowledge_base
+EDIT files.py - added set save path
+EDIT utils.py - added self model injection function
+
+KNOWN ISSUES (resolved):
+- Session restore message on top even on clear chat
+- Data saved during the session is accissible to marvin following a reindex
+- Scheduled reminder cannot be edited
+
 KNOWN ISSUES:
-- if something is saved during the session, it will not be accessible to Marvin until restart
-- format_context truncates large documents at 3000 chars
 - doesnt execute discord commands properly without help (once finetuned search_conversation_logs can be added again) - to finetune
 - Marvin sometimes says he completed a task before actually doing it (fabricated confirmation)
-- Scheduled reminder cannot be edited
 - Marvin schedules reminders instead of answering quesions often
+- Marvin insists on adding a second parameter when trying to update his self model
 
 EXTRA TASKS:
-- Allow the data from RAG to be deleted
-- on save default to data/information unless the user specifies otherwise - to finetune
 - image generation
 - duckduck links need to be stripped from the duck duck
 - save_page tool — fetch full page without char cap for archiving articles
 - merge DPO and SFT models into a single one
-- Real conversation log DPO
-- Startup self model needs to work on restore not just fresh sessions.
+- Real conversation log DPO 
+- home server user detection based on authentication

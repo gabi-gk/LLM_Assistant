@@ -14,6 +14,7 @@ from bs4 import BeautifulSoup
 from config import DEBUG
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
+from urllib.parse import urlparse, parse_qs, unquote
 
 load_dotenv()
 
@@ -114,7 +115,7 @@ def search_duckduckgo(query, num_results=5):
 
         # instant answer if available
         if data.get("AbstractText"):
-            lines.append(f"\nInstant answer: {data['AbstractText'][:400]}")
+            lines.append(f"Source: {clean_duckduckgo_url(data['AbstractURL'])}")
             if data.get("AbstractURL"):
                 lines.append(f"Source: {data['AbstractURL']}")
 
@@ -126,7 +127,8 @@ def search_duckduckgo(query, num_results=5):
                 if isinstance(topic, dict) and topic.get("Text"):
                     lines.append(f"{i}. {topic['Text'][:200]}")
                     if topic.get("FirstURL"):
-                        lines.append(f"   URL: {topic['FirstURL']}")
+                        clean_url = clean_duckduckgo_url(topic['FirstURL'])
+                        lines.append(f" URL: {clean_url}")
 
         if len(lines) == 1:
             return f"[INFO] No results found for '{query}'"
@@ -258,6 +260,7 @@ def search_and_open(query):
     # extract first URL from results
     urls = re.findall(r'URL: (https?://[^\s\]]+)', results)
 
+    urls = [clean_duckduckgo_url(u) for u in urls]
     external_urls = [u for u in urls if "duckduckgo.com" not in u]
 
     if not external_urls:
@@ -269,3 +272,18 @@ def search_and_open(query):
     
     open_url(external_urls[0])
     return f"[SUCCESS] Opened top result for '{query}': {external_urls[0]}"
+
+def clean_duckduckgo_url(url):
+    """
+    Strip DuckDuckGo redirect wrapper to get the actual destination URL
+    DDG wraps links as: https://duckduckgo.com/l/?uddg=<encoded_url>
+    
+    url: potentially wrapped DDG URL
+    returns: clean destination URL
+    """
+    if "duckduckgo.com/l/?" in url:
+        parsed = urlparse(url)
+        params = parse_qs(parsed.query)
+        if "uddg" in params:
+            return unquote(params["uddg"][0])
+    return url

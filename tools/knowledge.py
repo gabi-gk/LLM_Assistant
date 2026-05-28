@@ -21,6 +21,32 @@ def set_rag(rag_instance):
     global rag
     rag = rag_instance
 
+def get_rag():
+    """
+    Return the current RAG instance for use by other tools
+    """
+    return rag
+
+def reindex_knowledge_base():
+    """
+    Reindex all files in the knowledge base and logs directory when files have been added or changed outside of Marvin
+    """
+    if rag is None:
+        return "[ERROR] Knowledge base not initialised"
+    rag.index_all()
+    return f"[SUCCESS] Knowledge base reindexed - {rag.collection.count()} chunks total"
+
+
+def delete_from_knowledge_base(filename):
+    """
+    Remove a file's chunks from the RAG index
+
+    filename: name of the file to remove from the index
+    """
+    if rag is None:
+        return "[ERROR] Knowledge base not initialised"
+    return rag.delete_file(filename)
+
 def search_knowledge_base(query):
     """
     Search personal documents, notes and files for information if the users question indicates they are looking for specific information that the model doesn't know but might find

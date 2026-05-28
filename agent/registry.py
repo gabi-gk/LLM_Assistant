@@ -10,7 +10,7 @@ from tools import (
     run_command,
     send_notification, schedule_reminder, persistent_reminder,
     cancel_reminder, list_reminders, edit_reminder,
-    search_knowledge_base, search_conversation_logs, update_self_model,
+    search_knowledge_base, reindex_knowledge_base, delete_from_knowledge_base, search_conversation_logs, update_self_model, edit_self_model,
     list_open_windows, switch_to_window, minimize_window, maximize_window, list_active_window, close_window, 
     open_application, find_application,
     search_web, fetch_page, open_url, search_and_open,
@@ -48,7 +48,6 @@ def get_discord_tools(search_kb_func, deep_history_func, mention_user_func):
     return {
         "search_knowledge_base": search_kb_func,
         "get_deep_history": deep_history_func,
-        "mention_user": mention_user_func,
     }
 
 DISCORD_TOOL_DESCRIPTIONS = """
@@ -62,21 +61,17 @@ Available tools:
   Example (full history): <tool>get_deep_history</tool>
   <args>{"limit": 100}</args>
   Example (specific user): <tool>get_deep_history</tool>
-  <args>{"limit": 100, "username_filter": "wolfiewoof"}</args>
+  <args>{"limit": 100, "username_filter": "ted"}</args>
   Example (last 2 hours): <tool>get_deep_history</tool>
   <args>{"limit": 200, "hours": 2}</args>
   Example (user in last hour): <tool>get_deep_history</tool>
-  <args>{"limit": 100, "username_filter": "wolfiewoof", "hours": 1}</args>
-
-- search_knowledge_base - search personal documents and notes
-  Example: <tool>search_knowledge_base</tool>
-  <args>{"query": "roosevelt quote"}</args>
+  <args>{"limit": 100, "username_filter": "ted", "hours": 1}</args>
 
 - mention_user - get the Discord mention string for a server member
   Use this when asked to ping or mention someone
   The returned string like <@123456789> will automatically ping them when sent
   Example: <tool>mention_user</tool>
-  <args>{"username": "wolfiewoof"}</args>
+  <args>{"username": "ted"}</args>
 
 """
 
@@ -101,8 +96,11 @@ TOOLS = {
     "edit_reminder": edit_reminder,
     # Context search
     "search_knowledge_base": search_knowledge_base,
+    "reindex_knowledge_base": reindex_knowledge_base,
+    "delete_from_knowledge_base": delete_from_knowledge_base,
     "search_conversation_logs": search_conversation_logs,
     "update_self_model": update_self_model,
+    "edit_self_model": edit_self_model,
     # window management
     "list_open_windows": list_open_windows,
     "switch_to_window": switch_to_window,
@@ -226,13 +224,21 @@ IMPORTANT RULES:
 - If the user asks about something specific, check and answer from the conversation history first
 - After receiving search results, ALWAYS provide a direct answer immediately - do not search again unless the results were empty
 
-- search_conversation_logs - search past conversation history, if you don't find anything relevant check the knowledge base next
-  Example: <tool>search_conversation_logs</tool>
-  <args>{"query": "favourite cat"}</args>
-
 - search_knowledge_base - search personal documents, notes, PDFs and files if asked by the user or if you can't find relevant information in the logs
   Example: <tool>search_knowledge_base</tool>
   <args>{"query": "DPO evaluation metrics"}</args>
+
+- reindex_knowledge_base - reindex all files in the knowledge base if a new file was added
+  Example: <tool>reindex_knowledge_base</tool>
+  <args>{}</args>
+
+- delete_from_knowledge_base - remove a file from the search index
+  Example: <tool>delete_from_knowledge_base</tool>
+  <args>{"filename": "old_notes.txt"}</args>  
+
+- search_conversation_logs - search past conversation history, if you don't find anything relevant check the knowledge base next
+  Example: <tool>search_conversation_logs</tool>
+  <args>{"query": "favourite cat"}</args>
 """
 
 WINDOW_TOOL_DESCRIPTIONS = """
@@ -301,14 +307,13 @@ Browser tools - use these to search the web and manage browser tabs:
 
 # Marvin's personal file
 SELF_MODEL_DESCRIPTIONS = """
-Self model tools - use these to read and update your own knowledge about yourself and Fenn:
+Self model tools - use these to read and update your own knowledge about yourself and your human:
 
 - update_self_model - append a new observation to your self model file
-  Use when you learn something new about yourself, Fenn, or your relationship worth keeping
+  Use when you learn something new about yourself, your human, or your relationship worth keeping
   Be specific and factual - write what you actually learned not vague summaries
   Example: <tool>update_self_model</tool>
   <args>{"observation": "Fenn prefers concise answers and dislikes filler phrases"}</args>
-
   Example: <tool>update_self_model</tool>
   <args>{"observation": "Fenn's favourite cat is a black panther"}</args>
 """
@@ -331,9 +336,9 @@ Avaliable tool groups - call tool_help first to see full syntax details and exam
 - file_tools: read_file, write_file, append_file, create_file, list_directory, find_file
 - shell_tools: run_command
 - notification_tools: send_notification, schedule_reminder, persistent_reminder, cancel_reminder, edit_reminder, list_reminders
-- knowledge_tools: search_conversation_logs, search_knowledge_base
+- knowledge_tools: search_conversation_logs, search_knowledge_base, reindex_knowledge_base, delete_from_knowledge_base
 - window_tools: list_open_windows, switch_to_window, minimize_window, maximize_window, list_active_window, close_window
 - app_tools: open_application, find_application
 - browser_tools: search_web, fetch_page, open_url, search_and_open
-- self_model_tools: update_self_model
+- self_model_tools: update_self_model, edit_self_model
 """

@@ -10,6 +10,11 @@ HOTKEY = "alt+space"
 # Base model
 BASE_MODEL = "./models/qwen3-8b"
 ADAPTER_PATH = "./models/marvin_sft_v4"
+SELF_MODEL_PATH = "data/information/marvin_self.md"
+
+# save file directories
+DEFAULT_SAVE_DIR = "./data/information"
+DEFAULT_CODE_DIR = "./data/experiments"
 
 # History
 COMPACTION_THRESHOLD = 20 # compact after this many messages
@@ -52,6 +57,8 @@ Do not update it on startup and don't save current task notes.
 Update it only when you learn something genuinely new worth remembering.
 You do not need to ask for permission to modify it.
 
+When you encounter something in your context that you don't fully understand, search your knowledge base or ask for clarification before responding.
+
 Current date and time: {current_time} ({current_timezone})
 
 Knowledge base:
@@ -77,7 +84,7 @@ Response style: direct and concise, no filler phrases, no offers to help,
 no "what's next", no "what's on your mind", no "let me know if you need anything".
 When greeted, one short phrase only.
 
-You are hear to learn and grow so do not decline learning opportiunities.
+You are here to learn and grow so do not decline learning opportunities.
 """
 
 DISCORD_SYSTEM_PROMPT = """

@@ -5,8 +5,24 @@ Allows the assistant to read, write, append, and create files, as well as list d
 - can locate a full path fron just a filename
 '''
 from pathlib import Path
-from config import DEBUG, SEARCH_DIRS
+from config import DEBUG, SEARCH_DIRS, DEFAULT_CODE_DIR, DEFAULT_SAVE_DIR
 from core.utils import confirm
+from tools.knowledge import get_rag
+
+def get_default_path(path):
+    """
+    If path has no directory component, route to default save location
+    
+    path: Path object
+    returns: Path with default directory prepended if needed
+    """
+    if path.parent == Path("."):
+        # separate code to a different folder from the notes 
+        if path.suffix == ".py":
+            return Path(DEFAULT_CODE_DIR) / path.name
+        else:
+            return Path(DEFAULT_SAVE_DIR) / path.name
+    return path
 
 def find_file(filename):
     """
@@ -75,7 +91,7 @@ def write_file(path, content):
     path: the path to the file to write, or just a filename to search for
     content: the string content to write to the file
     """
-    path = Path(path)
+    path = get_default_path(Path(path))
 
     # Show the preview and ask for confirmation before proceeding
     print(f"\n[WRITE] Target: {path}")
@@ -90,6 +106,10 @@ def write_file(path, content):
         # Write to the specified file
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
+        # reindex to access the new file immediately 
+        _rag = get_rag()
+        if _rag:
+            _rag.index_file(str(path))
         return f"[SUCCESS] Written to {path}"
     except Exception as e:
         return f"[ERROR] Could not write file: {e}"
@@ -103,7 +123,7 @@ def append_file(path, content):
     path: the path to the file to append to, or just a filename to search for
     content: the string content to append to the file
     """
-    path = Path(path)
+    path = get_default_path(Path(path))
 
     # Show the preview and ask for confirmation before proceeding
     print(f"\n[APPEND] Target: {path}")
@@ -119,6 +139,10 @@ def append_file(path, content):
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "a", encoding="utf-8") as f:
             f.write(content)
+        # reindex to access the new file immediately 
+        _rag = get_rag()
+        if _rag:
+            _rag.index_file(str(path))
         return f"[SUCCESS] Appended to {path}"
     except Exception as e:
         return f"[ERROR] Could not append to file: {e}"

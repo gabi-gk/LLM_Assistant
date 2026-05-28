@@ -511,12 +511,29 @@ def edit_reminder(reminder_id, title=None, message=None, interval_minutes=None):
         return f"[ERROR] No active reminder with id: {reminder_id}"
 
     existing = saved[reminder_id]
+    # new title or keep remaining if not provided
     new_title = title or existing["title"]
     new_message = message or existing["message"]
-    new_interval = interval_minutes or existing["interval_minutes"]
 
     cancel_reminder(reminder_id)
-    return persistent_reminder(new_title, new_message, new_interval)
+
+    if existing.get("type") == "scheduled":
+        # reschedule with updated values - keep remaining time if delay not provided
+        new_delay = interval_minutes or existing.get("delay_minutes", 5)
+        return schedule_reminder(
+            new_title, new_message, new_delay,
+            require_confirmation=existing.get("require_confirmation", False),
+            snooze_minutes=existing.get("snooze_minutes", 5),
+            escalation_minutes=existing.get("escalation_minutes", 5)
+        )
+    else:
+        new_interval = interval_minutes or existing["interval_minutes"]
+        return persistent_reminder(
+            new_title, new_message, new_interval,
+            require_confirmation=existing.get("require_confirmation", False),
+            snooze_minutes=existing.get("snooze_minutes", 5),
+            escalation_minutes=existing.get("escalation_minutes", 5)
+        )
 
 
 def list_reminders():

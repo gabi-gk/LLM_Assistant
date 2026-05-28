@@ -5,6 +5,7 @@ Main application logic for the system tray assistant
 - Shows the chat window when the hotkey is pressed
 - Handles messages from the chat window, runs RAG search and agent loop, returns responses
 - Saves conversation history and session state on exit
+- injects self file into chat history for Marvin only
 """
 
 from pathlib import Path
@@ -16,6 +17,7 @@ import keyboard
 from config import DEBUG, COMPACTION_THRESHOLD, COMPACTION_KEEP_RECENT, LOGS_DIR, HOTKEY, DISCORD_ENABLED
 from core.model import load_model, create_streamer
 from core.history import compact_history, save_conversation, save_current_session, load_last_session, save_session_state
+from core.utils import inject_self_model
 from core.rag import RAG
 from agent.loop import run_agent
 from tray.window import ChatWindow
@@ -87,24 +89,12 @@ class TrayApp:
         loaded = load_last_session()
         self.full_history = loaded
         self.conversation_history = list(loaded)  # copy; compaction will trim this independently
+        is_restored = bool(loaded) # whether the session was restored or not
 
-        # inject self model directly - no agent loop, no side effects
-        if not self.conversation_history:  # fresh session only
-            self_model_path = Path("data/information/marvin_self.md")
-            if self_model_path.exists():
-                self_model = self_model_path.read_text(encoding="utf-8")
-                self.conversation_history.append({
-                    "role": "user",
-                    "content": f"[Startup context — your self model]\n{self_model}"
-                })
-                self.conversation_history.append({
-                    "role": "assistant",
-                    "content": "."
-                })
-                print("[TRAY] Self model injected into context")
+        inject_self_model(self.conversation_history, prepend=True)
 
-        if self.conversation_history:
-            # summarise the restored history so the model gets manageable context from the start
+        # summarise the restored history so the model gets manageable context from the start
+        if is_restored:  # only fire if there is history to restore
             self.conversation_history = compact_history(
                 self.model, self.tokenizer,
                 self.conversation_history,
@@ -138,6 +128,7 @@ class TrayApp:
             self.conversation_history = []
             self.full_history = []
             self.window.clear_display()
+            inject_self_model(self.conversation_history)
             return "History cleared"
 
         self.conversation_history.append({"role": "user", "content": user_input})

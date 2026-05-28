@@ -116,6 +116,24 @@ class RAG:
         self.index_directory(LOGS_DIR)
         print(f"[RAG] Indexing complete. {self.collection.count()} total chunks.\n")
 
+    def delete_file(self, filepath):
+        """
+        Remove all chunks belonging to a file from the vector database
+
+        filepath: path or filename of the file to remove from the index
+        """
+        path = Path(filepath)
+        all_ids = self.collection.get()["ids"]
+        # chunks are indexed as {stem}_{i} so match by filename stem
+        ids_to_delete = [id for id in all_ids if id.startswith(path.stem + "_")]
+
+        if not ids_to_delete:
+            return f"[INFO] No chunks found for {path.name}"
+
+        self.collection.delete(ids=ids_to_delete)
+        print(f"[RAG] Removed {len(ids_to_delete)} chunks for {path.name}")
+        return f"[SUCCESS] Removed {len(ids_to_delete)} chunks for {path.name}"
+
     def search(self, query, top_k=K_DEFAULT):
         """
         Convert query to a vector, find the closest chunks in the database
