@@ -9,7 +9,7 @@ HOTKEY = "alt+space"
 
 # Base model
 BASE_MODEL = "./models/qwen3-8b"
-ADAPTER_PATH = "./models/marvin_sft_v4"
+TRAINED_MODEL = "./models/marvin"
 SELF_MODEL_PATH = "data/information/marvin_self.md"
 
 # save file directories

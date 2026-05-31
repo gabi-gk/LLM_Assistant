@@ -150,7 +150,7 @@ EDIT config.py - identity moved from SYSTEM_PROMPT to self model file
 
 21.05.2026
 EDIT knowledge.py - added ability for Marvin to edit his self model
-CREATE core/utils.py - added for functions used by multiple scripts
+CREATED core/utils.py - added for functions used by multiple scripts
 EDIT core/utils.py - add confirmation function
 EDIT core/utils.py - added correct time and timezone information and injected into the prompt
 EDIT config.py - Hotkey definition added to config
@@ -185,6 +185,10 @@ KNOWN ISSUES (resolved):
 - Data saved during the session is accissible to marvin following a reindex
 - Scheduled reminder cannot be edited
 
+30.05.2026
+CREATED merge.py - mergining the training models into one final model
+CREATED training_combined.py - run the full training pipeline at once
+
 KNOWN ISSUES:
 - doesnt execute discord commands properly without help (once finetuned search_conversation_logs can be added again) - to finetune
 - Marvin sometimes says he completed a task before actually doing it (fabricated confirmation)
@@ -195,6 +199,5 @@ EXTRA TASKS:
 - image generation
 - duckduck links need to be stripped from the duck duck
 - save_page tool — fetch full page without char cap for archiving articles
-- merge DPO and SFT models into a single one
 - Real conversation log DPO 
 - home server user detection based on authentication
