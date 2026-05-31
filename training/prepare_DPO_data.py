@@ -11,7 +11,7 @@ import random
 import pandas as pd
 from datasets import Dataset
 from datetime import datetime
-from training.used_data.dpo import generate_synthetic_pairs
+from training.prepare_training_data import generate_synthetic_pairs
 
 OUTPUT_DIR = Path("./data/training")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)

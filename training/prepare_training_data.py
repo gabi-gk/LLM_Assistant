@@ -19,7 +19,7 @@ WRONG_PARAMS = {
     "cmd": ["command", "shell_command", "execute", "shell"],
     "title": ["name", "header", "subject", "app", "application", "window_name"],
     "message": ["body", "text", "notification_text"],
-    "delay_minutes": ["delay", "minutes", "time"],
+    "minutes": ["delay", "minutes", "time", "delay_minutes", "interval", "interval_minutes"],
     "interval_minutes": ["interval", "frequency", "period"],
     "reminder_id": ["id", "name", "title"],
     "query": ["search", "text", "search_query", "question"],
@@ -244,7 +244,7 @@ REMINDER_TOPICS = [
     ("Journal", "Write in your journal", 120),
 ]
 
-# Templates for the scheduled reminder replaced with  {title}, {title_lower}, {message}, {interval} per topic
+# Templates for a single reminder  {title}, {title_lower}, {message}, {interval} per topic
 SCHEDULE_VERBS = [
     "remind me to {title_lower} in {delay} minutes",
     "set a reminder for {title} in {delay} mins",
@@ -262,7 +262,7 @@ SCHEDULE_VERBS = [
     "ping me in {delay} mins about {title}",
 ]
 
-# Templates for the persistent reminder replaced with  {title}, {title_lower}, {message}, {interval} per topic
+# Templates for the repeating reminder  {title}, {title_lower}, {message}, {interval} per topic
 PERSISTENT_VERBS = [
     "remind me to {title_lower} every {interval} minutes",
     "set a repeating reminder for {title} every {interval} minutes",
@@ -280,6 +280,41 @@ PERSISTENT_VERBS = [
     "set {title} reminder to repeat every {interval} minutes",
     "every {interval} minutes remind me: {message}",
 ]
+
+# Templates for editing a reminder from a {title} and edit the invertal {minutes}
+EDIT_VERBS = [
+    "change the {title_lower} reminder to every {minutes} minutes",
+    "update the {title_lower} reminder to fire every {minutes} minutes",
+    "change {title_lower} to every {minutes} minutes instead",
+    "set the {title_lower} reminder to {minutes} minutes",
+    "make the {title_lower} reminder repeat every {minutes} minutes",
+    "edit {title_lower} to every {minutes} mins",
+    "update the {title_lower} interval to {minutes} minutes",
+    "change the {title_lower} reminder interval to {minutes}",
+]
+
+# Templates for editing only the message
+EDIT_MESSAGE_VERBS = [
+    "change the {title_lower} reminder message to '{new_message}'",
+    "update the {title_lower} reminder text to '{new_message}'",
+    "edit the {title_lower} reminder to say '{new_message}'",
+]
+
+# Templates for canceling a reminder
+CANCEL_VERBS = [
+    "cancel the {title_lower} reminder",
+    "stop the {title_lower} reminder",
+    "remove the {title_lower} reminder",
+    "cancel my {title_lower} reminder",
+    "stop reminding me about {title_lower}",
+    "turn off the {title_lower} reminder",
+    "delete the {title_lower} reminder",
+    "kill the {title_lower} reminder",
+]
+
+NEW_INTERVALS = [5, 10, 15, 20, 30, 45, 60, 90]
+NEW_MESSAGES = ["take a real break", "check it now", "don't forget this", "do it properly this time"]
+
 
 """ Context """
 
@@ -528,42 +563,6 @@ def gen_window_tools():
                 })
     return pairs
 
-
-def gen_persistent_reminder():
-    '''
-    Generate pairs that teach the model to use "interval_minutes" for repeating reminders
-    Uses REMINDER_TOPICS, templates from PERSISTENT_VERBS and WRONG_PARAMS
-    Also adds schedule_reminder as a wrong-tool rejection to distinguish from one-off reminders
-    '''
-    pairs = []
-    wrong_keys = WRONG_PARAMS["interval_minutes"]
-    for title, message, interval in REMINDER_TOPICS:
-        for verb_template in PERSISTENT_VERBS:
-            prompt = verb_template.replace("{title}", title)\
-                                  .replace("{title_lower}", title.lower())\
-                                  .replace("{message}", message)\
-                                  .replace("{interval}", str(interval))
-            wrong_key = random.choice(wrong_keys)
-            pairs.append({
-                "prompt": prompt,
-                "chosen": tool_call("persistent_reminder",
-                                    title=title, message=message, interval_minutes=interval),
-                "rejected": tool_call("schedule_reminder",
-                                      title=title, message=message, delay_minutes=interval),
-                "type": "persistent_reminder",
-            })
-            # also wrong param name rejection
-            pairs.append({
-                "prompt": prompt,
-                "chosen": tool_call("persistent_reminder",
-                                    title=title, message=message, interval_minutes=interval),
-                "rejected": tool_call("persistent_reminder",
-                                      title=title, message=message, **{wrong_key: interval}),
-                "type": "persistent_reminder",
-            })
-    return pairs
-
-
 def gen_update_self_model():
     '''
     Generate pairs that teach the model to use "observation" for updating its self model
@@ -582,6 +581,14 @@ def gen_update_self_model():
                 "type": "update_self_model",
             })
     return pairs
+
+def fake_id(title):
+    '''
+    Build a realistic reminder id for a topic
+    '''
+    safe = title.replace(" ", "_")
+    return f"{safe}_{random.randint(1748000000, 1799999999)}"
+
 
 def gen_list_directory():
     '''
@@ -602,27 +609,54 @@ def gen_list_directory():
             })
     return pairs
 
-def gen_schedule_reminder():
+def gen_create_reminder():
     '''
-    Generate pairs that teach the model to use "delay_minutes" for one-off reminders
-    Uses REMINDER_TOPICS, templates from SCHEDULE_VERBS and WRONG_PARAMS
+    Generate pairs for the merged create_reminder tool
+    Teaches minutes param, and repeat=true only for recurring requests
     '''
     pairs = []
-    wrong_keys = WRONG_PARAMS["delay_minutes"]
-    for title, message, delay in REMINDER_TOPICS:
-        for verb_template in SCHEDULE_VERBS:
+    wrong_keys = WRONG_PARAMS["minutes"]
+
+    # SCHEDULE_VERBS, repeat omitted
+    for title, message, minutes in REMINDER_TOPICS:
+        for verb_template in random.sample(SCHEDULE_VERBS, min(4, len(SCHEDULE_VERBS))):
             prompt = verb_template.replace("{title}", title)\
                                   .replace("{title_lower}", title.lower())\
                                   .replace("{message}", message)\
-                                  .replace("{delay}", str(delay))
+                                  .replace("{delay}", str(minutes))
             wrong_key = random.choice(wrong_keys)
             pairs.append({
                 "prompt": prompt,
-                "chosen": tool_call("schedule_reminder", title=title, message=message, delay_minutes=delay),
-                "rejected": tool_call("schedule_reminder", title=title, message=message, **{wrong_key: delay}),
-                "type": "schedule_reminder",
+                "chosen": tool_call("create_reminder", title=title, message=message, minutes=minutes),
+                "rejected": tool_call("create_reminder", title=title, message=message, **{wrong_key: minutes}),
+                "type": "create_reminder",
+            })
+
+
+    # PERSISTENT_VERBS, repeat=True
+    for title, message, minutes in REMINDER_TOPICS:
+        for verb_template in random.sample(PERSISTENT_VERBS, min(4, len(PERSISTENT_VERBS))):
+            prompt = verb_template.replace("{title}", title)\
+                                  .replace("{title_lower}", title.lower())\
+                                  .replace("{message}", message)\
+                                  .replace("{interval}", str(minutes))
+            wrong_key = random.choice(wrong_keys)
+            # wrong param name
+            pairs.append({
+                "prompt": prompt,
+                "chosen": tool_call("create_reminder", title=title, message=message, minutes=minutes, repeat=True),
+                "rejected": tool_call("create_reminder", title=title, message=message, **{wrong_key: minutes}, repeat=True),
+                "type": "create_reminder",
+            })
+            # forgot the main repeat = True
+            pairs.append({
+                "prompt": prompt,
+                "chosen": tool_call("create_reminder", title=title, message=message, minutes=minutes, repeat=True),
+                "rejected": tool_call("create_reminder", title=title, message=message, minutes=minutes),
+                "type": "create_reminder",
             })
     return pairs
+
 
 def gen_list_reminders():
     '''
@@ -661,82 +695,68 @@ def gen_list_reminders():
         })
     return pairs
 
-def gen_cancel_reminder():
-    '''
-    Generate pairs that teach the model to use "reminder_id" for cancelling reminders
-    Uses hardcoded prompt/id examples and WRONG_PARAMS
-    '''
-    pairs = []
-    examples = [
-        ("cancel the water reminder", "Water_1748123456"),
-        ("stop the break reminder", "Break_1748234567"),
-        ("cancel the training check reminder", "Training_1748345678"),
-        ("stop standup reminder", "Standup_1748456789"),
-        ("cancel the GPU check", "GPU_1748567890"),
-        ("stop the stretch reminder", "Stretch_1748678901"),
-        ("cancel my save reminder", "Save_1748789012"),
-        ("remove the meeting reminder", "Meeting_1748890123"),
-        ("cancel the lunch reminder", "Lunch_1748901234"),
-        ("stop the posture reminder", "Posture_1748012345"),
-        ("cancel reminder Water_1748123456", "Water_1748123456"),
-        ("stop Break_1748234567", "Break_1748234567"),
-        ("cancel reminder id Training_1748345678", "Training_1748345678"),
-        ("remove GPU_1748567890", "GPU_1748567890"),
-        ("stop recurring reminder Stretch_1748678901", "Stretch_1748678901"),
-    ]
-    wrong_keys = WRONG_PARAMS["reminder_id"]
-    for i, (prompt, reminder_id) in enumerate(examples):
-        wrong_key = wrong_keys[i % len(wrong_keys)]
-        pairs.append({
-            "prompt": prompt,
-            "chosen": tool_call("cancel_reminder", reminder_id=reminder_id),
-            "rejected": tool_call("cancel_reminder", **{wrong_key: reminder_id}),
-            "type": "cancel_reminder",
-        })
-    return pairs
-
 def gen_edit_reminder():
     '''
     Generate pairs that teach the model to use "reminder_id" plus update kwargs for editing
-    Uses hardcoded prompt/id/update examples and WRONG_PARAMS
+    Uses EDIT_VERBS and WRONG_PARAMS in the REMINDER_TOPICS
     '''
     pairs = []
-    examples = [
-        ("change the water reminder to every 20 minutes", "Water_1748123456", {"interval_minutes": 20}),
-        ("update the break reminder interval to 60 minutes", "Break_1748234567", {"interval_minutes": 60}),
-        ("change the training reminder message to 'check GPU too'", "Training_1748345678", {"message": "check GPU too"}),
-        ("update GPU reminder to every 15 minutes", "GPU_1748567890", {"interval_minutes": 15}),
-        ("change the standup reminder title", "Standup_1748456789", {"title": "Daily Standup"}),
-        ("update the stretch reminder interval to 30 minutes", "Stretch_1748678901", {"interval_minutes": 30}),
-        ("change the save reminder to every 5 minutes", "Save_1748789012", {"interval_minutes": 5}),
-        ("edit the lunch reminder message", "Lunch_1748901234", {"message": "lunch time - take a break"}),
-        ("update meeting reminder title", "Meeting_1748890123", {"title": "Team Meeting"}),
-        ("change the posture reminder interval to 25 minutes", "Posture_1748012345", {"interval_minutes": 25}),
-        ("update the water reminder to every 15 minutes", "Water_1748123456", {"interval_minutes": 15}),
-        ("change the break title to Short Break", "Break_1748234567", {"title": "Short Break"}),
-        ("update the GPU reminder message", "GPU_1748567890", {"message": "check VRAM too"}),
-        ("change the standup to every 30 minutes", "Standup_1748456789", {"interval_minutes": 30}),
-        ("edit the training reminder interval to 10 mins", "Training_1748345678", {"interval_minutes": 10}),
-        ("update the stretch title to Movement Break", "Stretch_1748678901", {"title": "Movement Break"}),
-        ("change the save reminder to every 15 minutes", "Save_1748789012", {"interval_minutes": 15}),
-        ("update the focus check message", "Focus_1748890123", {"message": "stay on task"}),
-        ("change the hydrate reminder interval to 30 minutes", "Hydrate_1748901234", {"interval_minutes": 30}),
-        ("edit the eye rest reminder to every 25 minutes", "Eye_Rest_1748012345", {"interval_minutes": 25}),
-        ("update the commit reminder title", "Commit_1748123457", {"title": "Git Commit"}),
-        ("change the model check interval to 30 minutes", "Model_Check_1748234568", {"interval_minutes": 30}),
-        ("edit the discord check message", "Discord_1748345679", {"message": "check new messages"}),
-        ("update the review reminder to every 90 minutes", "Review_1748456790", {"interval_minutes": 90}),
-        ("change the progress check title", "Progress_1748567891", {"title": "Progress Review"}),
-    ]
     wrong_keys = WRONG_PARAMS["reminder_id"]
-    for i, (prompt, reminder_id, updates) in enumerate(examples):
-        wrong_key = wrong_keys[i % len(wrong_keys)]
+ 
+    # teach the parameter name
+    for title, message, _ in REMINDER_TOPICS:
+        for verb_template in random.sample(EDIT_VERBS, min(4, len(EDIT_VERBS))):
+            new_minutes = random.choice(NEW_INTERVALS)
+            rid = fake_id(title)
+            prompt = verb_template.replace("{title}", title)\
+                                  .replace("{title_lower}", title.lower())\
+                                  .replace("{minutes}", str(new_minutes))
+            wrong_key = random.choice(wrong_keys)
+            # wrong id param name
+            pairs.append({
+                "prompt": prompt,
+                "chosen": tool_call("edit_reminder", reminder_id=rid, minutes=new_minutes),
+                "rejected": tool_call("edit_reminder", **{wrong_key: rid}, minutes=new_minutes),
+                "type": "edit_reminder",
+            })
+ 
+    # message edits
+    for title, message, _ in REMINDER_TOPICS:
+        verb_template = random.choice(EDIT_MESSAGE_VERBS)
+        new_msg = random.choice(NEW_MESSAGES)
+        rid = fake_id(title)
+        prompt = verb_template.replace("{title}", title)\
+                              .replace("{title_lower}", title.lower())\
+                              .replace("{new_message}", new_msg)
         pairs.append({
             "prompt": prompt,
-            "chosen": tool_call("edit_reminder", reminder_id=reminder_id, **updates),
-            "rejected": tool_call("edit_reminder", **{wrong_key: reminder_id, **updates}),
+            "chosen": tool_call("edit_reminder", reminder_id=rid, message=new_msg),
+            "rejected": tool_call("edit_reminder", reminder_id=rid, text=new_msg),
             "type": "edit_reminder",
         })
+    return pairs
+
+
+def gen_cancel_reminder():
+    '''
+    Generate pairs that teach the model to use "reminder_id" for cancelling reminders
+    Uses CANCEL_VERBS and WRONG_PARAMS in the REMINDER_TOPICS
+    '''
+    pairs = []
+    wrong_keys = WRONG_PARAMS["reminder_id"]
+ 
+    for title, message, _ in REMINDER_TOPICS:
+        for verb_template in random.sample(CANCEL_VERBS, min(4, len(CANCEL_VERBS))):
+            rid = fake_id(title)
+            prompt = verb_template.replace("{title}", title)\
+                                  .replace("{title_lower}", title.lower())
+            wrong_key = random.choice(wrong_keys)
+            pairs.append({
+                "prompt": prompt,
+                "chosen": tool_call("cancel_reminder", reminder_id=rid),
+                "rejected": tool_call("cancel_reminder", **{wrong_key: rid}),
+                "type": "cancel_reminder",
+            })
     return pairs
 
 def gen_list_active_window():
@@ -1029,62 +1049,6 @@ def gen_get_deep_history():
         })
     return pairs
 
-def gen_notifications():
-    '''
-    Generate pairs that teach the model to use "title" and "message" for send_notification
-    Uses hardcoded examples with wrong-title and wrong-message-key rejections
-    '''
-    pairs = []
-    examples = [
-        ("send a notification: training done", "Update", "training done"),
-        ("notify me that the model finished loading", "Model Ready", "model finished loading"),
-        ("send a desktop notification saying coffee time", "Reminder", "coffee time"),
-        ("notify: test passed", "Test", "test passed"),
-        ("send a notification that the export is complete", "Export", "export is complete"),
-        ("send notification: break time", "Break", "break time"),
-        ("notify me the download is done", "Download", "download is done"),
-        ("send a notification saying backup complete", "Backup", "backup complete"),
-        ("send notification to take meds", "Health", "take meds"),
-        ("notify: GPU temperature high", "Warning", "GPU temperature high"),
-        ("send desktop notification: meeting in 5 mins", "Meeting", "meeting in 5 mins"),
-        ("notify me now: check the logs", "Check", "check the logs"),
-        ("send an alert: disk space low", "Alert", "disk space low"),
-        ("send notification: file saved", "File", "file saved"),
-        ("notify: epoch 1 complete", "Training", "epoch 1 complete"),
-        ("send a notification: adapter saved", "Saved", "adapter saved successfully"),
-        ("notify me that evaluation is done", "Eval Done", "evaluation complete"),
-        ("send a desktop alert: low battery", "Battery", "battery running low"),
-        ("notify: git push complete", "Git", "push to remote complete"),
-        ("send notification saying model loaded", "Ready", "model loaded and ready"),
-        ("notify me: script finished", "Script", "script finished running"),
-        ("send a ping: check Discord", "Discord", "new Discord messages"),
-        ("desktop notification: tea ready", "Tea", "tea is ready"),
-        ("notify: checkpoint saved", "Checkpoint", "checkpoint saved at step 200"),
-        ("send alert: training loss spiked", "Warning", "training loss spiked"),
-        ("notify me when the pip install is done", "Install", "pip install finished"),
-        ("send notification: test suite passed", "Tests", "all tests passed"),
-        ("notify: VRAM usage high", "VRAM", "VRAM usage above 90%"),
-        ("send a desktop notification: new message", "Message", "you have a new message"),
-        ("alert me: process finished", "Process", "background process complete"),
-    ]
-    for i, (prompt, title, message) in enumerate(examples):
-        wrong_title_key = WRONG_PARAMS["title"][i % len(WRONG_PARAMS["title"])]
-        pairs.append({
-            "prompt": prompt,
-            "chosen": tool_call("send_notification", title=title, message=message),
-            "rejected": tool_call("send_notification", **{wrong_title_key: title, "message": message}),
-            "type": "send_notification",
-        })
-    for i, (prompt, title, message) in enumerate(examples[:5]):
-        wrong_msg_key = WRONG_PARAMS["message"][i % len(WRONG_PARAMS["message"])]
-        pairs.append({
-            "prompt": prompt,
-            "chosen": tool_call("send_notification", title=title, message=message),
-            "rejected": tool_call("send_notification", title=title, **{wrong_msg_key: message}),
-            "type": "send_notification",
-        })
-    return pairs
-
 def gen_knowledge_tools():
     '''
     Generate pairs for search_knowledge_base, search_conversation_logs and update_self_model
@@ -1215,27 +1179,25 @@ def generate_tool_pairs():
     all_pairs = []
     # These can be commented, deleted or appended based on training data required
     generators = [
-        ("read_file", gen_read_file),
-        ("write_file", gen_write_file),
-        ("create_file", gen_create_file),
-        ("append_file", gen_append_file),
-        ("find_file", gen_find_file),
-        ("list_directory", gen_list_directory),
-        ("run_command", gen_run_command),
-        ("notifications", gen_notifications),
-        ("schedule_reminder", gen_schedule_reminder),
-        ("persistent_reminder", gen_persistent_reminder),
-        ("window_tools", gen_window_tools),
-        ("app_tools", gen_app_tools),
-        ("browser_tools", gen_browser_tools),
-        ("knowledge_tools", gen_knowledge_tools),
+        # ("read_file", gen_read_file),
+        # ("write_file", gen_write_file),
+        # ("create_file", gen_create_file),
+        # ("append_file", gen_append_file),
+        # ("find_file", gen_find_file),
+        # ("list_directory", gen_list_directory),
+        # ("run_command", gen_run_command),
+        # ("window_tools", gen_window_tools),
+        # ("app_tools", gen_app_tools),
+        # ("browser_tools", gen_browser_tools),
+        # ("knowledge_tools", gen_knowledge_tools),
+        ("create_reminder", gen_create_reminder),
         ("list_reminders", gen_list_reminders),
-        ("cancel_reminder", gen_cancel_reminder),
         ("edit_reminder", gen_edit_reminder),
-        ("list_active_window", gen_list_active_window),
-        ("mention_user", gen_mention_user),
-        ("get_deep_history", gen_get_deep_history),
-        ("update_self_model", gen_update_self_model),
+        ("cancel_reminder", gen_cancel_reminder),
+        # ("list_active_window", gen_list_active_window),
+        # ("mention_user", gen_mention_user),
+        # ("get_deep_history", gen_get_deep_history),
+        # ("update_self_model", gen_update_self_model),
     ]
 
     # Create a training set from all generators

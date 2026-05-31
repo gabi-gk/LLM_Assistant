@@ -189,13 +189,22 @@ KNOWN ISSUES (resolved):
 CREATED merge.py - mergining the training models into one final model
 CREATED training_combined.py - run the full training pipeline at once
 
+31.05.2026
+EDIT notifications.py
+  merged schedule_reminder and persistent_reminder behind a singular create_reminder access point
+  fixed reminders surviving cancel by clearing the disk state 
+EDIT registry.py - removed unused functions
+EDIT prepare_training_data.py - removed unused functions and improved the reminder training data generation
+
 KNOWN ISSUES:
 - doesnt execute discord commands properly without help (once finetuned search_conversation_logs can be added again) - to finetune
-- Marvin sometimes says he completed a task before actually doing it (fabricated confirmation)
-- Marvin schedules reminders instead of answering quesions often
+- Marvin sometimes says he completed a task before actually doing it (fabricated confirmation) - agent loop (Note I could not replicate this error in further testing)
 - Marvin insists on adding a second parameter when trying to update his self model
+- No report and stop ability - fix in agent loop
+- Doesn't stop on an error - trying to brute force it
 
 EXTRA TASKS:
+- Add an automatic verification of the self_file testing for structural error, repetitions or size anomalies
 - image generation
 - duckduck links need to be stripped from the duck duck
 - save_page tool — fetch full page without char cap for archiving articles

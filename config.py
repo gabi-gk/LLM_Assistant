@@ -32,6 +32,9 @@ K_SECTION = 6
 REMINDERS_FILE = "./data/active_reminders.json"
 LOCK_FILE = "./data/assistant.lock"
 RESTORE_LAST_SESSION = True
+REQUIRE_CONFIRMATION = True
+SNOOZE_MINUTES = 5
+ESCALATION_MINUTES = 2
 
 # System used
 OS = platform.system()  # "Windows" or "Linux"

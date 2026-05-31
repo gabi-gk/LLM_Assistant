@@ -13,7 +13,6 @@ Design
 - Reliability work - Marvin still shows fabricated confirmations and occasional hallucinations. There are likely to be agent issues caused by ordering issues which are currently analysed and might be fine-tuned if found necessary
 - Merged final model - the SFT and DPO generated models were expanded on from being adapters to merging into a full model, making it set to be usable across a household and easy to manage.
 
-
 Features
 - System tray app with configurable hotkey (current Alt+Space)
 - Long-term memory via ChromaDB RAG

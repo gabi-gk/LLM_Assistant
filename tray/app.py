@@ -54,21 +54,28 @@ class TrayApp:
 
         def escalation_handler(title, message):
             """
-            Show urgent popup and inject chat message when a reminder is ignored past escalation time
+            Inject chat message when a reminder is ignored past escalation time
             """
-            # inject as a system trigger that Marvin responds to
-            self.window.show()
-            trigger = f"[REMINDER] Your '{title}' reminder was not confirmed: {message}"
-            self.conversation_history.append({"role": "user", "content": trigger})
-            self.full_history.append({"role": "user", "content": trigger})
-            
-            # generate Marvin's actual response
-            reply = run_agent(self.model, self.tokenizer, self.conversation_history, self.streamer)
-            
-            # Add to current conversation history
-            self.conversation_history.append({"role": "assistant", "content": reply})
-            self.full_history.append({"role": "assistant", "content": reply})
-            self.window.append_message("Marvin", reply, "ai")
+            def handle():
+                '''
+                Handle the tkinker thread to not freeze the GPU
+                '''
+                # pass the problem to Marvin
+                trigger = (f"[REMINDER] The user has not confirmed the '{title}' "
+                           f"reminder: {message}. Check in on them - see if they're stuck or need a hand.")
+                self.conversation_history.append({"role": "user", "content": trigger})
+                self.full_history.append({"role": "user", "content": trigger})
+
+                # Generate his response
+                reply = run_agent(self.model, self.tokenizer, self.conversation_history, self.streamer)
+                self.conversation_history.append({"role": "assistant", "content": reply})
+                self.full_history.append({"role": "assistant", "content": reply})
+
+                self.window.window.after(0, lambda: (
+                        self.window.show(),
+                        self.window.append_message("Marvin", reply, "ai")
+                    ))
+            threading.Thread(target=handle, daemon=True).start()
 
         set_escalation(escalation_handler)
 

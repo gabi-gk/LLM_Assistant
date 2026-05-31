@@ -8,8 +8,7 @@ Containts the list of tools and their descriptions for the model
 from tools import (
     read_file, write_file, append_file, create_file, list_directory, find_file,
     run_command,
-    send_notification, schedule_reminder, persistent_reminder,
-    cancel_reminder, list_reminders, edit_reminder,
+    create_reminder, list_reminders, edit_reminder, cancel_reminder,
     search_knowledge_base, reindex_knowledge_base, delete_from_knowledge_base, search_conversation_logs, update_self_model, edit_self_model,
     list_open_windows, switch_to_window, minimize_window, maximize_window, list_active_window, close_window, 
     open_application, find_application,
@@ -26,7 +25,7 @@ def tool_help(group):
     groups = {
         "file_tools": FILE_TOOL_DESCRIPTIONS,
         "shell_tools": SHELL_TOOL_DESCRIPTIONS,
-        "notification_tools": NOTIFICATION_TOOL_DESCRIPTIONS,
+        "reminder_tools": REMINDER_TOOL_DESCRIPTIONS,
         "knowledge_tools": KNOWLEDGE_TOOL_DESCRIPTIONS,
         "window_tools": WINDOW_TOOL_DESCRIPTIONS,
         "app_tools": APP_TOOL_DESCRIPTIONS,
@@ -87,13 +86,11 @@ TOOLS = {
     "list_directory": list_directory,
     # Shell
     "run_command": run_command,
-    # Notification
-    "send_notification": send_notification,
-    "schedule_reminder": schedule_reminder,
-    "persistent_reminder": persistent_reminder,
-    "cancel_reminder": cancel_reminder,
+    # Reminders
+    "create_reminder": create_reminder,
     "list_reminders": list_reminders,
     "edit_reminder": edit_reminder,
+    "cancel_reminder": cancel_reminder,
     # Context search
     "search_knowledge_base": search_knowledge_base,
     "reindex_knowledge_base": reindex_knowledge_base,
@@ -124,8 +121,6 @@ TOOLS = {
 FILE_TOOL_DESCRIPTIONS = """
 File tools - use these to read, write and navigate the filesystem:
 
-IMPORTANT: The path parameter is always called "path", filename is always called "filename"
-
 - read_file - read contents of any file, accepts a full path or just a filename - when user wants to SEE the content
   Example: <tool>read_file</tool>
   <args>{"path": "notes.txt"}</args>
@@ -153,8 +148,8 @@ IMPORTANT: The path parameter is always called "path", filename is always called
 
 # Detailed descritions, injected into the prompt when requested
 SHELL_TOOL_DESCRIPTIONS = """
-
 Shell tools - use these to run commands on the system:
+
 - run_command - run a shell command
   Destructive commands (rm, del, format) are fully blocked
   Modifying commands (pip, git, mkdir) require confirmation and show the command
@@ -164,55 +159,39 @@ Shell tools - use these to run commands on the system:
 """
 
 # Detailed descritions, injected into the prompt when requested
-NOTIFICATION_TOOL_DESCRIPTIONS = """
-Notification tools - use these for reminders and desktop notifications:
+REMINDER_TOOL_DESCRIPTIONS = """
+Reminder tools - use these to remind the user about something at a later time:
 
 IMPORTANT RULES: 
 - Reminder ID's are generated automatically each time you create a reminder, they look like "title_1234567890"
-- They are NOT the same as the remainder title
-- Only call list_reminders if you need an ID for cancel or edit operations
+- An ID is NOT the same as the remainder title
+- Only call list_reminders if you need an ID for edit or cancel operations
 - Never call list_reminders before creating a new reminder
 - If a tool call succeeds, report the result and stop
 
-- send_notification - immediate singular desktop notification
-  Example: <tool>send_notification</tool>
-  <args>{"title": "Reminder", "message": "Your message here"}</args>
-
-- schedule_reminder - one-time desktop notification after a delay
-  Use when user wants a single reminder at a specific time.
-  Optional: require_confirmation=true for reminders needing acknowledgement
-  Optional: snooze_minutes (default 5), escalation_minutes (default 5)
-  Example: <tool>schedule_reminder</tool>
-  <args>{"title": "Meeting", "message": "Time to meet", "delay_minutes": 30}</args>
-  Example with confirmation: 
-  <tool>schedule_reminder</tool>
-  <args>{"title": "Training", "message": "Workout", "delay_minutes": 60, "require_confirmation": true}</args>
-  
-- persistent_reminder - repeating notification at set intervals until cancelled
-  Use for countdowns or repeatable information
-  Optional: require_confirmation=true for reminders needing acknowledgement
-  Optional: snooze_minutes (default 5), escalation_minutes (default 5)
-  Example: <tool>persistent_reminder</tool>
-  <args>{"title": "Break", "message": "Take a break", "interval_minutes": 60}</args>
-  Example with confirmation: 
-  <tool>persistent_reminder</tool>
-  <args>{"title": "Meds", "message": "Take your medication", "interval_minutes": 60, "require_confirmation": true}</args>
+- create_reminder - remind the user about something after a delay, optionally repeating
+  Use for any "remind me" request. Set repeat=true only if the user wants it to
+  recur until they dismiss it; otherwise leave it off for a single reminder.
+  Example (one-time): <tool>create_reminder</tool>
+  <args>{"title": "Meeting", "message": "Time to meet", "minutes": 30}</args>
+  Example (repeating): <tool>create_reminder</tool>
+  <args>{"title": "Break", "message": "Take a break", "minutes": 60, "repeat": true}</args>
 
 - list_reminders - show all active reminders with their IDs
-  Always call this before cancelling or editing to get the reminder ID
+  Call this before cancelling or editing to get the reminder ID
   Example: <tool>list_reminders</tool>
   <args>{}</args>
+   
+- edit_reminder - update an active reminder
+  Get the ID from list_reminders first
+  Only provide the fields you want to change
+  Example: <tool>edit_reminder</tool>
+  <args>{"reminder_id": "Countdown_1234567890", "minutes": 2}</args> 
 
 - cancel_reminder - stop a persistent reminder usings its ID
   Get the ID from list_reminders first
   Example: <tool>cancel_reminder</tool>
   <args>{"reminder_id": "Break_1234567890"}</args> 
-  
-- edit_reminder - update an active reminder
-  Get the ID from list_reminders first
-  Only provide the fields you want to change, others stay the same
-  Example: <tool>edit_reminder</tool>
-  <args>{"reminder_id": "Countdown_1234567890", "interval_minutes": 2}</args>
 """
 
 KNOWLEDGE_TOOL_DESCRIPTIONS = """
@@ -329,13 +308,14 @@ If you want to use a tool, output the XML immediately - do not explain first.
 Make sure to follow the syntax exactly, or the tool call will fail. If your tool call fails, check the syntax and try again.
 
 Always call tool_help first to see detailed descriptions and examples for each tool group before using them
+E.g.
 <tool>tool_help</tool>
-<args>{"group": "notification_tools"}</args>
+<args>{"group": "file_tools"}</args>
 
 Avaliable tool groups - call tool_help first to see full syntax details and example:
 - file_tools: read_file, write_file, append_file, create_file, list_directory, find_file
 - shell_tools: run_command
-- notification_tools: send_notification, schedule_reminder, persistent_reminder, cancel_reminder, edit_reminder, list_reminders
+- reminder_tools: create_reminder,  list_reminders, edit_reminder, cancel_reminder
 - knowledge_tools: search_conversation_logs, search_knowledge_base, reindex_knowledge_base, delete_from_knowledge_base
 - window_tools: list_open_windows, switch_to_window, minimize_window, maximize_window, list_active_window, close_window
 - app_tools: open_application, find_application
