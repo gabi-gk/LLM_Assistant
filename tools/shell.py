@@ -8,6 +8,8 @@ Provides a secure interface for running shell commands with risk-based gating
 - Called by the assistant to run cmd commands
 '''
 
+import cmd
+import re
 import subprocess
 from pathlib import Path
 from core.utils import confirm
@@ -38,7 +40,7 @@ def run_command(cmd):
     risk = classify(cmd) # determine the risk level of the command based on its first word
 
     if risk == "blocked":
-        return f"[BLOCKED] '{cmd}' is disabled"
+        return f"[BLOCKED] '{cmd}' is a destructive command and is permanently disabled - it cannot be run, even with confirmation."
 
     if risk == "confirm":
         print(f"\n[SHELL] Command to run:\n  {cmd}")
@@ -71,12 +73,14 @@ def classify(cmd):
     cmd: string of the command to classify
     returns: "blocked", "confirm" or "safe"
     """
-    first_word = cmd.strip().split()[0].lower()
-    # strip path so C:\\windows\\system32\\cmd.exe → cmd
-    first_word = Path(first_word).stem.lower()
+    lowered = cmd.lower()
 
-    if first_word in BLOCKED_COMMANDS:
+    # scan the whole command for any blocked keywowords
+    if any(re.search(rf'\b{re.escape(b)}\b', lowered) for b in BLOCKED_COMMANDS):
         return "blocked"
+    
+    # scan the first work only to determine if confirmation is needed
+    first_word = Path(cmd.strip().split()[0].lower()).stem.lower()
     if first_word in CONFIRM_COMMANDS:
         return "confirm"
     return "safe"

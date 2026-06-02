@@ -6,10 +6,10 @@ Marvin - Local AI Assistant
 - Includes a DPO and SFT setup for personality and tool training 
 
 Design
-- Self-model file. - a quantized local model is stateless, it loses all the context between sessions. Marvin keeps a file that lets him persist his identity as well as user relevant context across conversations which gets injected into his prompt on each session to keep high and relevant data on each run
+- Self-model file. - a quantised local model is stateless, it loses all the context between sessions. Marvin keeps a file that lets him persist his identity as well as user relevant context across conversations which gets injected into his prompt on each session to keep high and relevant data on each run
 - Identity vs prompt separation - the system prompt stays short and holds only the core, essential instructions, the identity and context stay in the editable self-file. This separates the fluid part of the model from the fixed part, letting the personality evolve while keeping the prompt mostly untouched
-- Additional capabilities of the model were insipred by failure and exploration. The tool set is not fully sketched and gets improved and expanded through testing. Marvin is run, testing for any gaps and errors with his abilities which are then solved by new tools and upgrades.
-- Split training pipline - Adapted from the dissertation, initial tests proved that DPO is wrong for tool syntax, where there's a single correct answer. This led to dataset being split into DPO's conversational style and SFT's exact tool syntax correctness letting Marvin learn to use correct parameters while keeping desired response style.
+- Additional capabilities of the model were inspired by failure and exploration. The tool set is not fully sketched and gets improved and expanded through testing. Marvin is run, testing for any gaps and errors with his abilities which are then solved by new tools and upgrades.
+- Split training pipeline - Adapted from the dissertation, initial tests proved that DPO is wrong for tool syntax, where there's a single correct answer. This led to dataset being split into DPO's conversational style and SFT's exact tool syntax correctness letting Marvin learn to use correct parameters while keeping desired response style.
 - Reliability work - Marvin still shows fabricated confirmations and occasional hallucinations. There are likely to be agent issues caused by ordering issues which are currently analysed and might be fine-tuned if found necessary
 - Merged final model - the SFT and DPO generated models were expanded on from being adapters to merging into a full model, making it set to be usable across a household and easy to manage.
 
@@ -53,7 +53,7 @@ Project Structure
     core/ - the main functions of the model including RAG
     data/ - generated on startup - will include logs and is where ChromaDB indexes data from
     models/ - generated on model download - path used in config to load the model
-    tools/ - addition tools including notifications, file systems, window management and the extra discord bot
+    tools/ - additional tools including notifications, file systems, window management and the extra discord bot
     training/ - the training scripts
     tray/ - the GUI application
     run.py - GUI entry point

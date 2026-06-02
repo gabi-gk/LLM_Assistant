@@ -15,6 +15,7 @@ Actual screen tracker
 Separate self model into identity file (Marvin) and people files (per person)
 Different Qwen models for different devices based on hardware with access to his file - still himself
 Merge all the adapters for one clear Marvin 
+After correct SFT training tool_help remove tool_help
 
 26.04.2026
 CREATED check_gpu.py - verify CUDA and VRAM before running
@@ -196,12 +197,23 @@ EDIT notifications.py
 EDIT registry.py - removed unused functions
 EDIT prepare_training_data.py - removed unused functions and improved the reminder training data generation
 
+KNOWN ISSUES (RESOLVED)
+- Marvin sometimes says he completed a task before actually doing it (fabricated confirmation) 
+- Doesn't stop on an error 
+- No report and stop ability
+
+02.06.2026
+EDIT agent/loop.py
+  tool call turns only store the clean tool call and only the final answer persists in history
+  brute forcing is now blocked after 3 consecutive tool call fails
+  tool help is now capped to 2 per request
+  blocked commands are now a hard stop and cannot be bypassed
+EDIT tools/shell.py
+  expanded the block message to clearly state that the commands are permanently disabled
+
 KNOWN ISSUES:
 - doesnt execute discord commands properly without help (once finetuned search_conversation_logs can be added again) - to finetune
-- Marvin sometimes says he completed a task before actually doing it (fabricated confirmation) - agent loop (Note I could not replicate this error in further testing)
 - Marvin insists on adding a second parameter when trying to update his self model
-- No report and stop ability - fix in agent loop
-- Doesn't stop on an error - trying to brute force it
 
 EXTRA TASKS:
 - Add an automatic verification of the self_file testing for structural error, repetitions or size anomalies

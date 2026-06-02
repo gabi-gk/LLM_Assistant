@@ -12,6 +12,12 @@ from agent.registry import TOOLS, TOOL_DESCRIPTIONS
 from core.model import generate_response
 from core.utils import get_system_prompt
 
+# how many consecutive failed tool calls before the loop stops the model brute forcing
+MAX_CONSECUTIVE_ERRORS = 3
+# how many tool_help calls allowed per request before forcing a direct answer
+MAX_TOOL_HELP_CALLS = 2
+
+
 def parse_tool_call(response):
     """
     Check if the model's response contains a tool call
@@ -35,13 +41,46 @@ def parse_tool_call(response):
             end = raw.rfind('}') + 1
             if start != -1 and end > start:
                 args = json.loads(raw[start:end]) # extract the JSON substring containing the arguments
-        except json.JSONDecodeError:
-            return tool_name, {}
+        except json.JSONDecodeError: # return a sentiel indication rather than epty args
+            return tool_name, "__JSON_ERROR__"
 
     if DEBUG:
         print(f"[DEBUG] args type: {type(args)}, value: {args}")
     return tool_name, args
 
+def extract_tool_block(response):
+    """
+    Pull out just the tool invocation (tool + args tags) from a response
+
+    response: the raw model response containing a tool call
+    returns: the clean tool call string
+    """
+    tool_match = re.search(r'<tool>.*?</tool>', response, re.DOTALL)
+    args_match = re.search(r'<args>.*?</args>', response, re.DOTALL)
+    if tool_match and args_match:
+        return f"{tool_match.group(0)}\n{args_match.group(0)}"
+    return response
+
+def final_answer(model, tokenizer, working, full_prompt, streamer, system_msg):
+    """
+    Force the model to give a final answer without more tool calls by appending a system instruction
+
+    system_msg: the instruction describing why it should stop
+    returns: the model's final reply string
+    """
+    working.append({"role": "user", "content": f"<system>{system_msg}</system>"})
+    return generate_response(model, tokenizer, working, full_prompt, streamer)
+
+def record(working, response, tool_result):
+    """
+    Store only the clean result in model history 
+
+    working: the current model history to append to
+    response: the raw model response containing the tool call
+    tool_result: the result of executing the tool, to be fed back to the model
+    """
+    working.append({"role": "assistant", "content": extract_tool_block(response)})
+    working.append({"role": "user", "content": f"<tool_result>{tool_result}</tool_result>"})
 
 def run_agent(model, tokenizer, conversation_history, streamer, max_turns=8):
     """
@@ -56,10 +95,16 @@ def run_agent(model, tokenizer, conversation_history, streamer, max_turns=8):
     # combine base system prompt with tool descriptions and add current time
     full_prompt = get_system_prompt(SYSTEM_PROMPT) + TOOL_DESCRIPTIONS
     
+    # make a working copy of the conversation history to append tool results to without modifying the original
+    working = list(conversation_history)
+    
+    consecutive_errors = 0 # track the failed tool calls to stop the brute forcing
+    tool_help_calls = 0 # prevent infinite tool help calls
+
     # run each time the assistant is prompted for a response
     for turn in range(max_turns):
-        response = generate_response( # gemerate a response from the model given the conversation history and the full prompt 
-            model, tokenizer, conversation_history, full_prompt, streamer
+        response = generate_response( # gemerate a response from the model given the model history and the full prompt 
+            model, tokenizer, working, full_prompt, streamer
         )
 
         tool_name, args = parse_tool_call(response) # extract any tool call and arguments from the response
@@ -67,6 +112,14 @@ def run_agent(model, tokenizer, conversation_history, streamer, max_turns=8):
         if not tool_name:
             # If there is no tool call, return the response to be displayed in the chat window
             return response
+
+        # Handle the JSON parsing errors
+        if args == "__JSON_ERROR__":
+            consecutive_errors += 1
+            record(working, response, f"[ERROR] Invalid JSON in args for {tool_name}. Check your quoting and escaping.")
+            if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
+                return final_answer(model, tokenizer, working, full_prompt, streamer, "The last tool calls failed. Do not attempt more tool calls. Tell the user plainly what failed, then stop.")
+            continue
 
         # execute the tool
         if tool_name not in TOOLS:
@@ -77,15 +130,33 @@ def run_agent(model, tokenizer, conversation_history, streamer, max_turns=8):
             except Exception as e:
                 tool_result = f"[ERROR] Tool execution failed: {e}"
 
+        tool_result = str(tool_result) # string for the error check 
+
+        if tool_result.startswith("[BLOCKED]"):
+            record(working, response, tool_result)
+            return final_answer(model, tokenizer, working, full_prompt, streamer, "This action is blocked for safety and cannot be run. Tell the user plainly that it's destructive and you can't execute it, and why.")
+
+        error = tool_result.startswith("[ERROR]") or tool_result.startswith("[BLOCKED]") # check if the tool execution resulted in an error
+        
+        if tool_name == "tool_help":
+            tool_help_calls += 1  # keep track of tool help 
+            if tool_help_calls > MAX_TOOL_HELP_CALLS:
+                record(working, response, tool_result)
+                return final_answer(model, tokenizer, working, full_prompt, streamer, "Stop calling tool_help. Use what you know to answer the user directly, or tell the user you can't.")
+        elif tool_result.startswith("[ERROR]"):
+            consecutive_errors += 1 # increment on a real failure
+        else:
+            consecutive_errors = 0 # reset on success
+        
         if DEBUG:
             print(f"\n[TOOL] {tool_name}({args})")
             print(f"[RESULT] {tool_result[:200]}")
 
-        # feed result back so model can continue reasoning
-        conversation_history.append({"role": "assistant", "content": response})
-        conversation_history.append({
-            "role": "user",
-            "content": f"<tool_result>{tool_result}</tool_result>"
-        })
+        # feed the clear result back so model can continue reasoning
+        record(working, response, tool_result)
+
+        # A simple block to prevent the model from brute forcing instead of admitting failure.
+        if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
+            return final_answer(model, tokenizer, working, full_prompt, streamer, "The last tool calls failed. Do not attempt more tool calls. Tell the user plainly what failed, then stop.")
 
     return "[ERROR] I got stuck trying to reach a response."
