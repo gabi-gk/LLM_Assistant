@@ -18,7 +18,7 @@ from urllib.parse import urlparse, parse_qs, unquote
 
 load_dotenv()
 
-# SearXNG instance URL — set in .env
+# SearXNG instance URL - set in .env
 # Falls back to DuckDuckGo if not configured
 SEARXNG_URL = os.getenv("SEARXNG_URL", "")
 
@@ -149,7 +149,7 @@ def fetch_page(url, use_playwright=False):
     if use_playwright:
         return fetch_with_playwright(url)
 
-    # try BeautifulSoup first — faster and lighter
+    # try BeautifulSoup first - faster and lighter
     result = fetch_with_bs(url)
 
     # if BS returns very little content the page likely needs JS

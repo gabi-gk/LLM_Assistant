@@ -11,6 +11,9 @@ HOTKEY = "alt+space"
 BASE_MODEL = "./models/qwen3-8b"
 TRAINED_MODEL = "./models/marvin"
 SELF_MODEL_PATH = "data/information/marvin_self.md"
+SELF_MODEL_START = "[SELF_MODEL_START]"
+SELF_MODEL_END = "[SELF_MODEL_END]"
+SELF_MODEL_ACK = "[SELF_MODEL_ACK]"
 
 # save file directories
 DEFAULT_SAVE_DIR = "./data/information"

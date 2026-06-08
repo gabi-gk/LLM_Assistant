@@ -16,6 +16,7 @@ Separate self model into identity file (Marvin) and people files (per person)
 Different Qwen models for different devices based on hardware with access to his file - still himself
 Merge all the adapters for one clear Marvin 
 After correct SFT training tool_help remove tool_help
+Screen-perception + action capability 
 
 26.04.2026
 CREATED check_gpu.py - verify CUDA and VRAM before running
@@ -211,9 +212,19 @@ EDIT agent/loop.py
 EDIT tools/shell.py
   expanded the block message to clearly state that the commands are permanently disabled
 
+08.06.2026
+EDIT ultils.py - add clear markers for self injection start, end and acknowledgement
+EDIT history.py - remove the self model from compaction and re-inject it afterwards
+EDIT loop.py - add an error case for missing arguments during a tool call
+
+KNOWN ISSUES (RESOLVED)
+- marvin looses his self on compaction - add self injection after summarization (make sure self is not summarized)
+
 KNOWN ISSUES:
 - doesnt execute discord commands properly without help (once finetuned search_conversation_logs can be added again) - to finetune
 - Marvin insists on adding a second parameter when trying to update his self model
+- He upadates his self model a few times at once
+- tries to update his self file on normal turns instead of answering
 
 EXTRA TASKS:
 - Add an automatic verification of the self_file testing for structural error, repetitions or size anomalies
@@ -222,3 +233,4 @@ EXTRA TASKS:
 - save_page tool — fetch full page without char cap for archiving articles
 - Real conversation log DPO 
 - home server user detection based on authentication
+- verify tool actions via tool return value

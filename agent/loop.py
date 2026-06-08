@@ -28,6 +28,9 @@ def parse_tool_call(response):
     tool_match = re.search(r'<tool>(.*?)</tool>', response, re.DOTALL) # check for <tool> tags in the response and extract the tool name
     args_match = re.search(r'<args>(.*?)</args>', response, re.DOTALL) # check for <args> tags and extract the JSON string of arguments
 
+    if tool_match and not args_match:
+        return tool_match.group(1).strip(), "__MISSING_ARGS__" # flag missing args
+
     if not tool_match or not args_match:
         return None, None
 
@@ -119,6 +122,12 @@ def run_agent(model, tokenizer, conversation_history, streamer, max_turns=8):
             record(working, response, f"[ERROR] Invalid JSON in args for {tool_name}. Check your quoting and escaping.")
             if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
                 return final_answer(model, tokenizer, working, full_prompt, streamer, "The last tool calls failed. Do not attempt more tool calls. Tell the user plainly what failed, then stop.")
+            continue
+        elif args == "__MISSING_ARGS__":
+            consecutive_errors += 1
+            record(working, response, f"[ERROR] Tool call for {tool_name} is missing its <args> block. Provide both <tool> and <args>.")
+            if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
+                return final_answer(model, tokenizer, working, full_prompt, streamer, "The last tool calls were malformed. Stop and tell the user plainly what you couldn't do.")
             continue
 
         # execute the tool

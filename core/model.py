@@ -21,7 +21,7 @@ def load_model(model_name=TRAINED_MODEL):
     target = model_name if (model_name and os.path.exists(model_name)) else BASE_MODEL
 
     # load the pre-trained model and its tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(model_name) # text to numbers 
+    tokenizer = AutoTokenizer.from_pretrained(target) # text to numbers 
     
     quant_config = BitsAndBytesConfig(
         load_in_4bit=True, # compress the weights from 16 pits per number to 4 bits per number
@@ -31,7 +31,7 @@ def load_model(model_name=TRAINED_MODEL):
     )
     
     model = AutoModelForCausalLM.from_pretrained(
-        model_name,
+        target,
         quantization_config=quant_config, 
         device_map="auto", # CPU/GPU
         trust_remote_code=False, # do not pull and run any remote code
@@ -67,6 +67,8 @@ def generate_response(model, tokenizer, conversation_history, system_prompt, str
             temperature=0.7,
             top_p=0.9, # cut off the unlinkely tokens
             do_sample=True, # tokens picked probabilistically (True) - varied responses vs deterministically (False) - same output every time
+            repetition_penalty=1.05, # discourage repeating the same token sequences
+            #no_repeat_ngram_size=3, # prevent repeating 3 token sequences
             streamer=streamer # print while thinking rather than dump everything at once
         )
     

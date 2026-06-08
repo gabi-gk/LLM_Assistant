@@ -135,7 +135,7 @@ class TrayApp:
             self.conversation_history = []
             self.full_history = []
             self.window.clear_display()
-            inject_self_model(self.conversation_history)
+            inject_self_model(self.conversation_history, prepend=True)
             return "History cleared"
 
         self.conversation_history.append({"role": "user", "content": user_input})
@@ -150,7 +150,7 @@ class TrayApp:
         self.conversation_history.append({"role": "assistant", "content": reply})
         self.full_history.append({"role": "assistant", "content": reply})
 
-        # compact only the model context — full_history is never touched
+        # compact only the model context - full_history is never touched
         self.conversation_history = compact_history(
             self.model, self.tokenizer,
             self.conversation_history,

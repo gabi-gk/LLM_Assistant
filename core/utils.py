@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 import tkinter.messagebox as messagebox
 import tzlocal
-from config import SELF_MODEL_PATH
+from config import SELF_MODEL_PATH, SELF_MODEL_START, SELF_MODEL_END, SELF_MODEL_ACK
 
 def get_system_prompt(base_prompt):
     """
@@ -41,9 +41,11 @@ def inject_self_model(history, prepend=False):
     if not path.exists():
         return False
 
+    history[:] = [m for m in history if not m.get("content", "").startswith(SELF_MODEL_START)] # strip the message so future calls replace rather than duplicate
+
     self_model = path.read_text(encoding="utf-8")
-    user_msg = {"role": "user", "content": f"[Startup context - your self model]\n{self_model}"}
-    assistant_msg = {"role": "assistant", "content": "."}
+    user_msg = {"role": "user", "content": f"{SELF_MODEL_START}\n[Startup context - your self model]\n{self_model}\n{SELF_MODEL_END}"} # clean mark of start and end
+    assistant_msg = {"role": "assistant", "content": SELF_MODEL_ACK}
 
     if prepend:
         history.insert(0, assistant_msg)
@@ -55,7 +57,6 @@ def inject_self_model(history, prepend=False):
     print("[SELF MODEL] Injected into context")
     return True
 
-
 def confirm(prompt, use_gui=True):
     """
     Ask for confirmation and return true if confirmed
@@ -65,7 +66,7 @@ def confirm(prompt, use_gui=True):
     returns True if the user confirms, False otherwise
     """
     if use_gui: # show in a message box
-        return messagebox.askyesno("Marvin asking for confirmation", prompt)
+        return messagebox.askyesno("Marvin is asking for confirmation", prompt)
     else:
         response = input(f"\n[CONFIRM] {prompt} (y/n): ").strip().lower() # normal terminal input
         return response in ("y", "yes")

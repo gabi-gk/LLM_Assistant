@@ -10,7 +10,8 @@ import os
 import torch
 from datetime import datetime
 from pathlib import Path
-from config import LOGS_DIR, SESSION_FILE, RESTORE_LAST_SESSION
+from config import LOGS_DIR, SESSION_FILE, RESTORE_LAST_SESSION, SELF_MODEL_START, SELF_MODEL_ACK
+from core.utils import inject_self_model
 
 def save_session_state(state):
     """
@@ -192,6 +193,9 @@ def compact_history(model, tokenizer, history, threshold=16, keep_recent=6):
     old_chunk = history[:-keep_recent]
     recent = history[-keep_recent:]
 
+    # remove the self file and its acknowledgment from the summary
+    old_chunk = [m for m in old_chunk if not m.get("content", "").startswith(SELF_MODEL_START) and not m.get("content", "").startswith(SELF_MODEL_ACK)]
+
     print("\n[Compacting conversation history...]\n")
     summary = summarise_history(model, tokenizer, old_chunk)
     
@@ -205,4 +209,7 @@ def compact_history(model, tokenizer, history, threshold=16, keep_recent=6):
         "content": "Understood, I have context from our earlier conversation."
     }
     
-    return [summary_message, summary_ack] + recent
+    compacted = [summary_message, summary_ack] + recent
+    inject_self_model(compacted, prepend=True) # add self time after compaction
+
+    return compacted
