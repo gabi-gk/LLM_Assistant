@@ -11,7 +11,7 @@ import torch
 from datetime import datetime
 from pathlib import Path
 from config import LOGS_DIR, SESSION_FILE, RESTORE_LAST_SESSION, SELF_MODEL_START, SELF_MODEL_ACK
-from core.utils import inject_self_model
+from core.self_management import inject_self_model
 
 def save_session_state(state):
     """

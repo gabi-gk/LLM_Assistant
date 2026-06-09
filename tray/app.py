@@ -11,19 +11,21 @@ Main application logic for the system tray assistant
 from pathlib import Path
 import threading
 import sys
+import difflib
 from PIL import Image, ImageDraw
 import pystray
 import keyboard
 from config import DEBUG, COMPACTION_THRESHOLD, COMPACTION_KEEP_RECENT, LOGS_DIR, HOTKEY, DISCORD_ENABLED
 from core.model import load_model, create_streamer
 from core.history import compact_history, save_conversation, save_current_session, load_last_session, save_session_state
-from core.utils import inject_self_model
+from core.self_management import inject_self_model
 from core.rag import RAG
 from agent.loop import run_agent
 from tray.window import ChatWindow
 from tools.notifications import restore_reminders, send_notification, set_escalation, set_tk_root
 from tools.knowledge import set_rag
 from tools.apps.discord_bot import set_discord_model, start_discord_bot
+from core.self_management import verify_self_model, restore_self_model, snapshot_self_model
 
 class TrayApp:
     """
@@ -98,6 +100,38 @@ class TrayApp:
         self.conversation_history = list(loaded)  # copy; compaction will trim this independently
         is_restored = bool(loaded) # whether the session was restored or not
 
+        status = verify_self_model()
+        if DEBUG:
+            print(f"[SELF VERIFY] status: {status['code']}, user_changed: {status['user_changed']}")
+        if status["code"] == "no_file":
+            # no file found, notify the user
+            print("[SELF VERIFY] Self-model file missing!")
+
+        elif status["code"] == "no_marker":
+            # file config error, notify the user
+            print("[SELF VERIFY] Self-model missing OBSERVATIONS marker - misconfigured")
+
+        elif status["observations_repeat"]:
+            # model is experiencing runaway observations, restore from snapshot
+            print("[SELF VERIFY] Runaway observations detected - restoring from snapshot")
+            restore_self_model()
+
+        elif status["user_changed"]:
+            snap_user, live_user = status["user_diff"]
+            diff_lines = list(difflib.unified_diff(
+                snap_user.splitlines(), live_user.splitlines(),
+                fromfile="snapshot", tofile="current", lineterm=""
+            ))
+            diff_text = "\n".join(diff_lines) if diff_lines else "(no line-level diff)"
+            self.window.append_message("System",
+                f"Self-model user section changed since last snapshot.\n"
+                f"If that was you, ignore this. If not, type 'restore self' to revert.\n\n{diff_text}", "system")
+
+        if status["observations_long"]:
+            print("[SELF VERIFY] Observations section is getting long - consider a review")
+
+        if status["ok"]:
+            snapshot_self_model() # only snapshot a clean file
         inject_self_model(self.conversation_history, prepend=True)
 
         # summarise the restored history so the model gets manageable context from the start
@@ -137,7 +171,13 @@ class TrayApp:
             self.window.clear_display()
             inject_self_model(self.conversation_history, prepend=True)
             return "History cleared"
-
+        
+        elif user_input.lower() == "restore self":
+            if restore_self_model():
+                inject_self_model(self.conversation_history, prepend=True) # keep context consistent
+                return "Self-model restored from the last snapshot."
+            return "No snapshot available to restore from."
+        
         self.conversation_history.append({"role": "user", "content": user_input})
         self.full_history.append({"role": "user", "content": user_input})
 

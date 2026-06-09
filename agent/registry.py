@@ -9,11 +9,12 @@ from tools import (
     read_file, write_file, append_file, create_file, list_directory, find_file,
     run_command,
     create_reminder, list_reminders, edit_reminder, cancel_reminder,
-    search_knowledge_base, reindex_knowledge_base, delete_from_knowledge_base, search_conversation_logs, update_self_model, edit_self_model,
+    search_knowledge_base, reindex_knowledge_base, delete_from_knowledge_base, search_conversation_logs,
     list_open_windows, switch_to_window, minimize_window, maximize_window, list_active_window, close_window, 
     open_application, find_application,
     search_web, fetch_page, open_url, search_and_open,
 )
+from core.self_management import update_self_model
 
 def tool_help(group):
     """
@@ -97,7 +98,6 @@ TOOLS = {
     "delete_from_knowledge_base": delete_from_knowledge_base,
     "search_conversation_logs": search_conversation_logs,
     "update_self_model": update_self_model,
-    "edit_self_model": edit_self_model,
     # window management
     "list_open_windows": list_open_windows,
     "switch_to_window": switch_to_window,
@@ -320,5 +320,5 @@ Avaliable tool groups - call tool_help first to see full syntax details and exam
 - window_tools: list_open_windows, switch_to_window, minimize_window, maximize_window, list_active_window, close_window
 - app_tools: open_application, find_application
 - browser_tools: search_web, fetch_page, open_url, search_and_open
-- self_model_tools: update_self_model, edit_self_model
+- self_model_tools: update_self_model
 """
