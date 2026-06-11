@@ -56,7 +56,7 @@ class ChatWindow:
         # colour tags for different message types
         self.chat_display.tag_config("user", foreground="#10f51b") # green
         self.chat_display.tag_config("ai", foreground="#fdfdfd") # white
-        self.chat_display.tag_config("system", foreground="#222dc9") # blue
+        self.chat_display.tag_config("system", foreground="#138fa0") # blue
         self.chat_display.tag_config("error", foreground="#eb2727") # red
         self.chat_display.tag_config("tool", foreground="#e0e015") # yellow
 

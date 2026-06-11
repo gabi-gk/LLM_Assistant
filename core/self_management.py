@@ -1,5 +1,10 @@
 '''
-TODO
+Provides self management functions for Marvin's self model
+- Snapshot and restore functions
+- Verification checks for runaway observations and user changes
+- callable update function for the model
+
+The self file is a markdown file with two regions, user made notes above the obserations marker and model written content below it
 '''
 
 from pathlib import Path

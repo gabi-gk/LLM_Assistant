@@ -95,6 +95,7 @@ class TrayApp:
 
         restore_reminders() # check for any acive reminders and restore them
 
+        # Self model verification and injection 
         loaded = load_last_session()
         self.full_history = loaded
         self.conversation_history = list(loaded)  # copy; compaction will trim this independently
@@ -117,15 +118,22 @@ class TrayApp:
             restore_self_model()
 
         elif status["user_changed"]:
-            snap_user, live_user = status["user_diff"]
-            diff_lines = list(difflib.unified_diff(
-                snap_user.splitlines(), live_user.splitlines(),
-                fromfile="snapshot", tofile="current", lineterm=""
-            ))
-            diff_text = "\n".join(diff_lines) if diff_lines else "(no line-level diff)"
-            self.window.append_message("System",
-                f"Self-model user section changed since last snapshot.\n"
-                f"If that was you, ignore this. If not, type 'restore self' to revert.\n\n{diff_text}", "system")
+                    snap_user, live_user = status["user_diff"]
+                    diff = difflib.unified_diff(
+                        snap_user.splitlines(), live_user.splitlines(), lineterm=""
+                    )
+                    # reformat into plain added/removed lines, skip the unified-diff headers
+                    changes = []
+                    for line in diff:
+                        if line.startswith("+++") or line.startswith("---") or line.startswith("@@"):
+                            continue # skip the noisy headers
+                        if line.startswith("+"):
+                            changes.append(f"Added: {line[1:].strip()}")
+                        elif line.startswith("-"):
+                            changes.append(f"Removed: {line[1:].strip()}")
+                    change_text = "\n".join(changes) if changes else "(no line-level changes)"
+                    msg = (f"Self-model user section changed since last snapshot.\n 'accept self' to keep it, 'restore self' to revert.\n\n{change_text}")
+                    self.window.window.after(500, lambda: self.window.append_message("System", msg, "system"))
 
         if status["observations_long"]:
             print("[SELF VERIFY] Observations section is getting long - consider a review")
@@ -175,8 +183,12 @@ class TrayApp:
         elif user_input.lower() == "restore self":
             if restore_self_model():
                 inject_self_model(self.conversation_history, prepend=True) # keep context consistent
-                return "Self-model restored from the last snapshot."
-            return "No snapshot available to restore from."
+                return "Self-model restored from the last snapshot"
+            return "No snapshot available to restore from. Requires manual file fix"
+        
+        elif user_input.lower() == "accept self":
+            snapshot_self_model() # Save the current file as the new baseline
+            return "Self-model changes accepted - new baseline saved."
         
         self.conversation_history.append({"role": "user", "content": user_input})
         self.full_history.append({"role": "user", "content": user_input})

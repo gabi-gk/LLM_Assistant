@@ -230,8 +230,8 @@ KNOWN ISSUES:
 - Marvin insists on adding a second parameter when trying to update his self model
 - He upadates his self model a few times at once
 - tries to update his self file on normal turns instead of answering
-- no cancellation mechanism
-- verification not yet finished
+- no cancellation mechanism (start here after coming back)
+- train him to stop defaulting to the word "observed" when talking
 
 EXTRA TASKS:
 - Add an automatic verification of the self_file testing for structural error, repetitions or size anomalies
