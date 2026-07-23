@@ -46,6 +46,7 @@ class TrayApp:
         self.window = None
         self.tray = None
         self.ready = False
+        self.cancel = threading.Event() # cancelation of the agent loop
 
     def initialise(self):
         """
@@ -159,6 +160,13 @@ class TrayApp:
         # notify user model is loaded
         send_notification("I'm ready to Chat!", "Model 'Marvin' loaded and ready to use.")
 
+    def on_cancel(self):
+        """
+        Called when the user presses the cancel button
+        """
+
+        self.cancel.set() # signal the agent loop to cancel
+
     def on_message(self, user_input):
         """
         Called by ChatWindow when user sends a message
@@ -169,6 +177,10 @@ class TrayApp:
         """
         if not self.ready:
             return "Model is still loading, please wait..."
+
+        if user_input.lower() == "cancel":
+            self.on_cancel()
+            return "[INTERRUPT_SENT]"
 
         # handle pre-defined special commands
         if user_input.lower() == "clear":
@@ -192,12 +204,21 @@ class TrayApp:
         
         self.conversation_history.append({"role": "user", "content": user_input})
         self.full_history.append({"role": "user", "content": user_input})
+        self.cancel.clear() # clear any previous cancelation
 
         reply = run_agent(
             self.model, self.tokenizer,
             self.conversation_history,
-            self.streamer
+            self.streamer,
+            cancel=self.cancel
         )
+
+        if reply.startswith("[INTERRUPT]"):
+            self.conversation_history.pop() # remove the interrupted user message from the model history
+            self.full_history.pop()
+            save_session_state("closed")
+            save_current_session(self.full_history)
+            return reply
 
         self.conversation_history.append({"role": "assistant", "content": reply})
         self.full_history.append({"role": "assistant", "content": reply})
@@ -259,7 +280,7 @@ class TrayApp:
         """
         # build chat window object, do not display yet, pass the on_message callback so that when a message is sent from the UI
         # it calls the on_message function in this class to handle it
-        self.window = ChatWindow(on_message_callback=self.on_message)
+        self.window = ChatWindow(on_message_callback=self.on_message, on_cancel_callback=self.on_cancel)
 
         # load model in background so UI appears immediately without waiting for model to load
         # daemon thread will automatically exit the tray app when main thread exits

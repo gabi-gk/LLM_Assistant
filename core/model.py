@@ -4,11 +4,22 @@
 - creates a TextStreamer for streaming the model's output as it's generated
 '''
 
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig, TextStreamer
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig, TextStreamer, StoppingCriteriaList, StoppingCriteria
 import torch
 from peft import PeftModel
 import os
 from config import BASE_MODEL, TRAINED_MODEL
+
+class CancelCriteria(StoppingCriteria):
+    """
+    Stopping criteria for the model generation that stops it when cancellation it requested
+    """
+
+    def __init__(self, cancel):
+        self.cancel = cancel
+
+    def __call__(self, input_ids, scores, **kwargs):
+        return self.cancel.is_set()  # stop generation if cancellation is requested
 
 def load_model(model_name=TRAINED_MODEL):
     '''
@@ -38,7 +49,7 @@ def load_model(model_name=TRAINED_MODEL):
     )
     return model, tokenizer
 
-def generate_response(model, tokenizer, conversation_history, system_prompt, streamer):
+def generate_response(model, tokenizer, conversation_history, system_prompt, streamer, cancel=None):
     '''
     Get the model's response to the current conversation
 
@@ -47,6 +58,7 @@ def generate_response(model, tokenizer, conversation_history, system_prompt, str
     conversation_history: list of message dicts representing the conversation so far
     system_prompt: the core instructions and context for the model 
     streamer: a TextStreamer instance that dictates how the model's output is presented as it generates
+    cancel: a signal for cancelling the model generation
     returns the model's response as a string
     '''
     # Prepare the model input, include chat history
@@ -59,7 +71,11 @@ def generate_response(model, tokenizer, conversation_history, system_prompt, str
 
     # Convert string to token ID for the model and return as torch tensors
     model_inputs = tokenizer([prompt], return_tensors="pt").to(model.device)
-    
+
+    stopping = None
+    if cancel is not None:
+        stopping = StoppingCriteriaList([CancelCriteria(cancel)])
+
     with torch.no_grad(): # no gradients needed for inference
         generated_ids = model.generate(
             **model_inputs,
@@ -69,7 +85,8 @@ def generate_response(model, tokenizer, conversation_history, system_prompt, str
             do_sample=True, # tokens picked probabilistically (True) - varied responses vs deterministically (False) - same output every time
             repetition_penalty=1.05, # discourage repeating the same token sequences
             #no_repeat_ngram_size=3, # prevent repeating 3 token sequences
-            streamer=streamer # print while thinking rather than dump everything at once
+            streamer=streamer, # print while thinking rather than dump everything at once
+            stopping_criteria=stopping # stop generation if cancellation is requested
         )
     
     # Keep only the newly generated tokens and decode

@@ -18,6 +18,7 @@ REPEAT_THRESHOLD = 3
 OBSERVATIONS_SOFT_LIMIT = 40
 # how many last snapshots of the self model to keep
 MAX_BACKUPS = 3
+
 def inject_self_model(history, prepend=False):
     """
     Inject Marvin's self model into conversation history.

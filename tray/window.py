@@ -13,13 +13,15 @@ class ChatWindow:
     Hides to tray on close, never destroys the model
     """
 
-    def __init__(self, on_message_callback):
+    def __init__(self, on_message_callback, on_cancel_callback=None):
         """
         Initialize the chat window
 
-        on_message_callback — function called with user input string when the user sends a message
+        on_message_callback - function called with user input string when the user sends a message
+        on_cancel_callback - function called when the user cancels a request
         """
         self.on_message = on_message_callback
+        self.on_cancel_callback = on_cancel_callback
         self.window = None
         self.input_field = None
         self.chat_display = None
@@ -104,6 +106,21 @@ class ChatWindow:
             cursor="hand2"
         ).pack(side=tk.LEFT, padx=(8, 0))
 
+        # cancel button
+        tk.Button(
+            input_frame,
+            text="Cancel",
+            bg="#eb2727",
+            fg="white",
+            font=("Consolas", 11),
+            borderwidth=0,
+            padx=12,
+            command=self.on_cancel,
+            activebackground="#eb2727",
+            activeforeground="white",
+            cursor="hand2"
+        ).pack(side=tk.LEFT, padx=(8, 0))
+
         # start hidden
         self.window.withdraw()
 
@@ -124,6 +141,13 @@ class ChatWindow:
             args=(user_input,),
             daemon=True
         ).start()
+
+    def on_cancel(self):
+        """
+        Handle cancel button click
+        """
+        if self.on_cancel_callback:
+            self.on_cancel_callback()
 
     def load_history(self, conversation_history):
         """
@@ -173,6 +197,12 @@ class ChatWindow:
             response = self.on_message(user_input)
             # Show pure response
             self.remove_last_system()
+            if response == "[INTERRUPT_SENT]": # remove double message
+                return
+            if response.startswith("[INTERRUPT]"): # system not Marvin response
+                self.append_message("System", "Request interrupted.", "system")
+                return
+
             self.append_message("Marvin", response, "ai")
         except Exception as e:
             self.remove_last_system()

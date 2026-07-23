@@ -85,7 +85,7 @@ def record(working, response, tool_result):
     working.append({"role": "assistant", "content": extract_tool_block(response)})
     working.append({"role": "user", "content": f"<tool_result>{tool_result}</tool_result>"})
 
-def run_agent(model, tokenizer, conversation_history, streamer, max_turns=8):
+def run_agent(model, tokenizer, conversation_history, streamer, max_turns=8, cancel=None):
     """
     Generates a response, checks for tool calls, executes them and feeds results back until no more tool calls
     
@@ -94,6 +94,7 @@ def run_agent(model, tokenizer, conversation_history, streamer, max_turns=8):
     conversation_history: list of dicts with 'role' and 'content' keys representing the conversation history
     streamer: the model's streamer for token-by-token generation
     max_turns: maximum number of tool calls before giving up and returning an error
+    cancel: signal cancellation of the agent loop
     """
     # combine base system prompt with tool descriptions and add current time
     full_prompt = get_system_prompt(SYSTEM_PROMPT) + TOOL_DESCRIPTIONS
@@ -106,9 +107,16 @@ def run_agent(model, tokenizer, conversation_history, streamer, max_turns=8):
 
     # run each time the assistant is prompted for a response
     for turn in range(max_turns):
+
+        if cancel is not None and cancel.is_set():
+            return "[INTERRUPT] The request was cancelled by the user."
+
         response = generate_response( # gemerate a response from the model given the model history and the full prompt 
-            model, tokenizer, working, full_prompt, streamer
+            model, tokenizer, working, full_prompt, streamer, cancel=cancel
         )
+
+        if cancel is not None and cancel.is_set(): # chcek  again before any tool calls are executed
+            return "[INTERRUPT] The request was cancelled by the user."
 
         tool_name, args = parse_tool_call(response) # extract any tool call and arguments from the response
 

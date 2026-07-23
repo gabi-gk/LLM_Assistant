@@ -1,15 +1,15 @@
-Base chat — Qwen3-8B, 4-bit, simple chat loop
-RAG — ChromaDB, index a folder of your notes - long term external memory
-Basic tools — file read/write, notifications, shell commands (low risk)
-Agent loop — tool calling parser, confirmation system
-Tray app — always-on, hotkey, hide-on-close
-Window management tools — switch tabs, get open windows
+Base chat - Qwen3-8B, 4-bit, simple chat loop
+RAG - ChromaDB, index a folder of your notes - long term external memory
+Basic tools - file read/write, notifications, shell commands (low risk)
+Agent loop - tool calling parser, confirmation system
+Tray app - always-on, hotkey, hide-on-close
+Window management tools - switch tabs, get open windows
 Discord bot API
 Conversation logger + fine-tune queue
-LoRA/SFT pipeline — adapt existing DPO setup
+LoRA/SFT pipeline - adapt existing DPO setup
 Let Marvin access and modify his own file describing himself for personality direction
 Adapter versioning
-Linux port — OS-aware tool layer, Arch-specific tools
+Linux port - OS-aware tool layer, Arch-specific tools
 browser extension to control active browser tabs
 Actual screen tracker
 Separate self model into identity file (Marvin) and people files (per person)
@@ -32,8 +32,8 @@ EDIT rag.py - Python AST chunking splitting by function/class boundaries
 EDIT rag.py - PDF chunking with adaptive splitting strategy
 
 KNOWN ISSUES (resolved):
-- PDF section retrieval — fixed with heading-aware chunking
-- System prompt too restrictive — fixed with knowledge base clarification
+- PDF section retrieval - fixed with heading-aware chunking
+- System prompt too restrictive - fixed with knowledge base clarification
 
 28.04.2026
 EDIT chat.py - system prompt: fixed over-restriction on general knowledge questions
@@ -49,12 +49,12 @@ EDIT rag.py - .txt and .md similarity score boost
 
 29.04.2026
 EDIT file hierarchy changed - split code into modules:
-  core/model.py — model loading and inference
-  core/history.py — conversation compaction and saving
-  core/rag.py — ChromaDB indexing and search
-  core/chunking.py — all file chunking logic (new)
-  config.py — all constants and system prompt
-  main.py — entry point (replaces chat.py)
+  core/model.py - model loading and inference
+  core/history.py - conversation compaction and saving
+  core/rag.py - ChromaDB indexing and search
+  core/chunking.py - all file chunking logic (new)
+  config.py - all constants and system prompt
+  main.py - entry point (replaces chat.py)
 
 30.04.2026
 CREATE tools/files.py - read, write, append, create, list directory
@@ -221,24 +221,35 @@ KNOWN ISSUES (RESOLVED)
 - marvin looses his self on compaction - add self injection after summarization (make sure self is not summarized)
 
 09.06.2026
-CREATE core/self_management.py - self file verification added
+CREATE core/self_management.py
+  the file is split at the [OBSERVATIONS] marker letting the user curate the region above it and Marvin to write below it
+  snapshots stored, after verification passes and only if changes present
+  in file user changes flagged in chat for confirmation or restoration
+  observations have a review threshold 
 EDIT core/utils.py - move the self injection function to self_management
 EDIT tools/knowledge.py - move self functions to self_management
+
+23.07.2026
+EDIT core/lock.py - replace os.kill command with a proper windows PID check
+EDIT tray/app.py - add a cancel flag that is passed to the agent loop to roll back the interrupted messages from history
+EDIT agent/loop.py - cancel checks before and after generation
+EDIT tray/window.py - add a cancel callback
+EDIT core/model.py - allow for cancelation mid generation
 
 KNOWN ISSUES:
 - doesnt execute discord commands properly without help (once finetuned search_conversation_logs can be added again) - to finetune
 - Marvin insists on adding a second parameter when trying to update his self model
 - He upadates his self model a few times at once
 - tries to update his self file on normal turns instead of answering
-- no cancellation mechanism (start here after coming back)
 - train him to stop defaulting to the word "observed" when talking
 
 EXTRA TASKS:
 - Add an automatic verification of the self_file testing for structural error, repetitions or size anomalies
 - image generation
 - duckduck links need to be stripped from the duck duck
-- save_page tool — fetch full page without char cap for archiving articles
+- save_page tool - fetch full page without char cap for archiving articles
 - Real conversation log DPO 
 - home server user detection based on authentication
 - verify tool actions via tool return value
 - reinstall logging toggle
+- add cancel mid tool generation
