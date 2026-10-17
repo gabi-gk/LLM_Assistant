@@ -19,7 +19,6 @@ def save_session_state(state):
     
     state: closed, cleared - closed means shutdown without clearning the conversation - restore required
     """
-    os.makedirs("./data", exist_ok=True)
     with open(SESSION_FILE, "w") as f:
         json.dump({"state": state}, f)
 
@@ -44,7 +43,6 @@ def save_conversation(conversation_history, summary=None):
         return
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    os.makedirs(LOGS_DIR, exist_ok=True)
 
     log = {
         "timestamp": timestamp,

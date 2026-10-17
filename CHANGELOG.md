@@ -236,12 +236,20 @@ EDIT agent/loop.py - cancel checks before and after generation
 EDIT tray/window.py - add a cancel callback
 EDIT core/model.py - allow for cancelation mid generation
 
+15.10.2026
+CREATE server.py - inference server, model load once at startup, pure inteference only
+EDIT config.py - add SERVER_HOST,SERVER_ PORT and ensure_dirs()
+EDIT core/history.py, tools/notifications.py - remove makedirs 
+  main.py, run.py - call ensure_dirs to create data dir if doesn't exist
+
 KNOWN ISSUES:
 - doesnt execute discord commands properly without help (once finetuned search_conversation_logs can be added again) - to finetune
 - Marvin insists on adding a second parameter when trying to update his self model
 - He upadates his self model a few times at once
 - tries to update his self file on normal turns instead of answering
 - train him to stop defaulting to the word "observed" when talking
+- data directories aren't created on a fresh system so backups don't exist.
+- FastAPI uses a different erorr shape to openai error
 
 EXTRA TASKS:
 - Add an automatic verification of the self_file testing for structural error, repetitions or size anomalies
