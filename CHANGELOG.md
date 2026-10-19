@@ -242,10 +242,15 @@ EDIT config.py - add SERVER_HOST,SERVER_ PORT and ensure_dirs()
 EDIT core/history.py, tools/notifications.py - remove makedirs 
   main.py, run.py - call ensure_dirs to create data dir if doesn't exist
 
+19.10.2026
+CREATE Dockerfile - inference image, requirements are installed before the code is copied
+CREATE .dockerignore - exclude folders from the build
+EDIT config.py - BASE_MODEL, TRAINED_MODEL, SERVER_HOST read from env with defaults instead of a set path
+
 KNOWN ISSUES:
 - doesnt execute discord commands properly without help (once finetuned search_conversation_logs can be added again) - to finetune
 - Marvin insists on adding a second parameter when trying to update his self model
-- He upadates his self model a few times at once
+- He upadates his self modegit l a few times at once
 - tries to update his self file on normal turns instead of answering
 - train him to stop defaulting to the word "observed" when talking
 - data directories aren't created on a fresh system so backups don't exist.

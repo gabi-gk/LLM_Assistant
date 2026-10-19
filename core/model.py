@@ -6,7 +6,6 @@
 
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig, TextStreamer, StoppingCriteriaList, StoppingCriteria
 import torch
-from peft import PeftModel
 import os
 from config import BASE_MODEL, TRAINED_MODEL
 

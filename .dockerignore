@@ -1,0 +1,7 @@
+models/
+data/
+.venv/
+.git/
+__pycache__/
+*.pyc
+requirements-full.txt

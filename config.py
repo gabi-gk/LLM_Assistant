@@ -9,8 +9,8 @@ DEBUG = True
 HOTKEY = "alt+space"
 
 # Base model
-BASE_MODEL = "./models/qwen3-8b"
-TRAINED_MODEL = "./models/marvin"
+BASE_MODEL = os.environ.get("BASE_MODEL", "./models/qwen3-8b")
+TRAINED_MODEL = os.environ.get("TRAINED_MODEL", "./models/marvin")
 
 # Self-model
 SELF_MODEL_PATH = "data/marvin_data/marvin_self.md"
@@ -49,7 +49,8 @@ ESCALATION_MINUTES = 2
 OS = platform.system()  # "Windows" or "Linux"
 
 # API server
-SERVER_HOST = "127.0.0.1" # localhost only - the server has no authentication
+SERVER_HOST = os.environ.get("SERVER_HOST", "127.0.0.1") # localhost only - the server has no authentication
+#0.0.0.0 for LAN
 SERVER_PORT = 8000
 
 # Disocrd toggle
