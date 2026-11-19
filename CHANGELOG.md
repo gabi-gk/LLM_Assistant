@@ -239,6 +239,15 @@ EDIT core/model.py - allow for cancelation mid generation
 01.09.2026
 CREATE agent/outcomes.py - classify the tool call outcomes
 
+15.10.2026
+CREATE server.py - inference server, model load once at startup, pure inteference only
+EDIT config.py - add SERVER_HOST,SERVER_ PORT and ensure_dirs()
+EDIT core/history.py, tools/notifications.py - remove makedirs 
+  main.py, run.py - call ensure_dirs to create data dir if doesn't exist
+
+KNOWN ISSUES (RESOLVED)
+- data directories aren't created on a fresh system so backups don't exist.
+
 19.10.2026
 CREATE Dockerfile - inference image, requirements are installed before the code is copied
 CREATE .dockerignore - exclude folders from the build
@@ -258,21 +267,22 @@ EDIT agent/verification.py - READ_ONLY_TOOLS, verify() never raises so a broken 
 EDIT agent/loop.py - read-only tools are logged only, run_agent fills an issues list with failed and unverified tool calls
 EDIT agent/outcomes.py - format_issues() builds the system note shown after the reply
 EDIT tray/app.py, tray/window.py, main.py - show the tool issues note after Marvin's reply, never stored in history
-15.10.2026
-CREATE server.py - inference server, model load once at startup, pure inteference only
-EDIT config.py - add SERVER_HOST,SERVER_ PORT and ensure_dirs()
-EDIT core/history.py, tools/notifications.py - remove makedirs 
-  main.py, run.py - call ensure_dirs to create data dir if doesn't exist
 
 KNOWN ISSUES:
 - doesnt execute discord commands properly without help (once finetuned search_conversation_logs can be added again) - to finetune
 - Marvin insists on adding a second parameter when trying to update his self model
-- He upadates his self modegit l a few times at once
+- He upadates his self model a few times at once
 - tries to update his self file on normal turns instead of answering
 - train him to stop defaulting to the word "observed" when talking
 - add the result to the history as a system message so he knows it happened and doesn't expand on his false claim, 
-- data directories aren't created on a fresh system so backups don't exist.
 - FastAPI uses a different erorr shape to openai error
+- run_command doesnt check the exit code so a failed command counts as a success
+- tool verification only prints to the console, nothing gets saved 
+- unchecked tools show up in the system note even when nothing went wrong
+- verify prints even when DEBUG is off
+- reminder tools dont convert what Marvin sends (format-wise) - "false" would count as true, 
+- some verifiers read the tool's success message so changing that message can break the verifier
+- two reminders with the same title made in the same second get the same ID, the first one keeps firing and cant be cancelled (not reproduced yet)
 
 EXTRA TASKS:
 - image generation
@@ -284,6 +294,6 @@ EXTRA TASKS:
 - add cancel mid tool generation
 - change rag to pass instructions as a separate tool message role instead of user
 - change compaction to trigger on token use not message count
-- change the command verification to catch nested/chained blocked commands
+- change the command verification to catch nested/chained blocked commands and wrapped ones
 - Change the way rag matches chunkIDs to use metadata instead of filename prefix in rag.delete_file 
 - Change Change chunkIDs to include the file extensions so they do not overwrite each other in rag indexing 
