@@ -157,7 +157,7 @@ def create_file(path, content=""):
     content: the string content to write to the new file (default is empty)
     returns the confirmation/cancellation messages from the write_file function
     """
-    path = Path(path)
+    path = get_default_path(Path(path)) # check the same location write_file will write to
     if path.exists():
         print(f"\n[CREATE] Warning: {path} already exists")
         if not confirm(f"Overwrite {path}?"): # Get the confirmation from the user

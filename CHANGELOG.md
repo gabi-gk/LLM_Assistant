@@ -236,20 +236,42 @@ EDIT agent/loop.py - cancel checks before and after generation
 EDIT tray/window.py - add a cancel callback
 EDIT core/model.py - allow for cancelation mid generation
 
+01.09.2026
+CREATE agent/outcomes.py - classify the tool call outcomes
+
+27.10.2026
+EDIT agent/outcomes.py - add VERIFIED, FAILED and UNCHECKED verdicts and annotate() so a failed check never reads as a success
+CREATE agent/verification.py - check the tool's claimed outcome against the real state
+  write_file, create_file, append_file - compare the bytes on disk, resolved through the default save path
+  create_reminder, edit_reminder, cancel_reminder - check the saved and running reminders, ids matched literally, catches id collisions
+  delete_from_knowledge_base - nothing left for the target and nothing removed from other files
+  update_self_model - delegates file health to verify_self_model, checks the entry is the newest observation
+  any other tool, or a check that can't run, comes back UNCHECKED
+EDIT agent/loop.py - snapshot state before the call, verify after, a failed verification counts as an error
+EDIT tools/files.py - create_file checks the default save path for an existing file, same as write_file
+EDIT agent/verification.py - READ_ONLY_TOOLS, verify() never raises so a broken verifier can't count as a failed call
+EDIT agent/loop.py - read-only tools are logged only, run_agent fills an issues list with failed and unverified tool calls
+EDIT agent/outcomes.py - format_issues() builds the system note shown after the reply
+EDIT tray/app.py, tray/window.py, main.py - show the tool issues note after Marvin's reply, never stored in history
+
 KNOWN ISSUES:
 - doesnt execute discord commands properly without help (once finetuned search_conversation_logs can be added again) - to finetune
 - Marvin insists on adding a second parameter when trying to update his self model
 - He upadates his self model a few times at once
 - tries to update his self file on normal turns instead of answering
 - train him to stop defaulting to the word "observed" when talking
+- add the result to the history as a system message so he knows it happened and doesn't expand on his false claim, 
 
 EXTRA TASKS:
-- Add an automatic verification of the self_file testing for structural error, repetitions or size anomalies
 - image generation
 - duckduck links need to be stripped from the duck duck
 - save_page tool - fetch full page without char cap for archiving articles
 - Real conversation log DPO 
 - home server user detection based on authentication
-- verify tool actions via tool return value
 - reinstall logging toggle
 - add cancel mid tool generation
+- change rag to pass instructions as a separate tool message role instead of user
+- change compaction to trigger on token use not message count
+- change the command verification to catch nested/chained blocked commands
+- Change the way rag matches chunkIDs to use metadata instead of filename prefix in rag.delete_file 
+- Change Change chunkIDs to include the file extensions so they do not overwrite each other in rag indexing 

@@ -21,6 +21,7 @@ from core.history import compact_history, save_conversation, save_current_sessio
 from core.self_management import inject_self_model
 from core.rag import RAG
 from agent.loop import run_agent
+from agent.outcomes import format_issues
 from tray.window import ChatWindow
 from tools.notifications import restore_reminders, send_notification, set_escalation, set_tk_root
 from tools.knowledge import set_rag
@@ -70,14 +71,24 @@ class TrayApp:
                 self.full_history.append({"role": "user", "content": trigger})
 
                 # Generate his response
-                reply = run_agent(self.model, self.tokenizer, self.conversation_history, self.streamer)
+                issues = [] # tool failures to show after his reply
+                reply = run_agent(self.model, self.tokenizer, self.conversation_history, self.streamer, issues=issues)
                 self.conversation_history.append({"role": "assistant", "content": reply})
                 self.full_history.append({"role": "assistant", "content": reply})
 
-                self.window.window.after(0, lambda: (
-                        self.window.show(),
-                        self.window.append_message("Marvin", reply, "ai")
-                    ))
+                # run if escalation is triggered while the window is hidden, so show it and display the message
+                notice = format_issues(issues)
+
+                def show_escalation():
+                    '''
+                    Show the window and append the message, run on the tkinker thread
+                    '''
+                    self.window.show()
+                    self.window.append_message("Marvin", reply, "ai")
+                    if notice:
+                        self.window.append_message("System", notice, "system")
+
+                self.window.window.after(0, show_escalation)  # tkinter: only the main thread may touch the window
             threading.Thread(target=handle, daemon=True).start()
 
         set_escalation(escalation_handler)
@@ -206,12 +217,16 @@ class TrayApp:
         self.full_history.append({"role": "user", "content": user_input})
         self.cancel.clear() # clear any previous cancelation
 
+        issues = [] # tool failures to show after his reply
         reply = run_agent(
             self.model, self.tokenizer,
             self.conversation_history,
             self.streamer,
-            cancel=self.cancel
+            cancel=self.cancel,
+            issues=issues
         )
+        # the window shows this after the reply, it never goes into history
+        self.window.pending_notice = format_issues(issues)
 
         if reply.startswith("[INTERRUPT]"):
             self.conversation_history.pop() # remove the interrupted user message from the model history

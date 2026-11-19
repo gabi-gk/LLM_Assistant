@@ -22,3 +22,6 @@ llm-env/
 
 # VS Code
 .vscode/
+
+# side work
+extra/

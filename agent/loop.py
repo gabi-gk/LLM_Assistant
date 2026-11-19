@@ -11,9 +11,13 @@ from config import DEBUG, SYSTEM_PROMPT
 from agent.registry import TOOLS, TOOL_DESCRIPTIONS
 from core.model import generate_response
 from core.utils import get_system_prompt
+from agent.outcomes import check_output, annotate, ERROR, BLOCKED, CANCELLED, OK, FAILED, UNCHECKED
+from agent.verification import capture, verify, READ_ONLY_TOOLS
 
 # how many consecutive failed tool calls before the loop stops the model brute forcing
 MAX_CONSECUTIVE_ERRORS = 3
+# how many consecutive cancelled tool calls before the loop stops the model brute forcing
+MAX_CONSECUTIVE_CANCELS = 2
 # how many tool_help calls allowed per request before forcing a direct answer
 MAX_TOOL_HELP_CALLS = 2
 
@@ -85,17 +89,21 @@ def record(working, response, tool_result):
     working.append({"role": "assistant", "content": extract_tool_block(response)})
     working.append({"role": "user", "content": f"<tool_result>{tool_result}</tool_result>"})
 
-def run_agent(model, tokenizer, conversation_history, streamer, max_turns=8, cancel=None):
+def run_agent(model, tokenizer, conversation_history, streamer, max_turns=8, cancel=None, issues=None):
     """
     Generates a response, checks for tool calls, executes them and feeds results back until no more tool calls
-    
+
     model: the loaded language model
     tokenizer: the model's tokenizer
     conversation_history: list of dicts with 'role' and 'content' keys representing the conversation history
     streamer: the model's streamer for token-by-token generation
     max_turns: maximum number of tool calls before giving up and returning an error
     cancel: signal cancellation of the agent loop
+    issues: optional list, filled with tool failures and unverified outcomes to show the user after the reply
     """
+    if issues is None:
+        issues = [] # nobody is listening, collect anyway so the loop doesn't need to check
+
     # combine base system prompt with tool descriptions and add current time
     full_prompt = get_system_prompt(SYSTEM_PROMPT) + TOOL_DESCRIPTIONS
     
@@ -104,6 +112,7 @@ def run_agent(model, tokenizer, conversation_history, streamer, max_turns=8, can
     
     consecutive_errors = 0 # track the failed tool calls to stop the brute forcing
     tool_help_calls = 0 # prevent infinite tool help calls
+    cancelled_calls = 0 # track the cancelled tool calls to stop the brute forcing
 
     # run each time the assistant is prompted for a response
     for turn in range(max_turns):
@@ -127,12 +136,14 @@ def run_agent(model, tokenizer, conversation_history, streamer, max_turns=8, can
         # Handle the JSON parsing errors
         if args == "__JSON_ERROR__":
             consecutive_errors += 1
+            issues.append(f"{tool_name}: invalid JSON in the arguments")
             record(working, response, f"[ERROR] Invalid JSON in args for {tool_name}. Check your quoting and escaping.")
             if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
                 return final_answer(model, tokenizer, working, full_prompt, streamer, "The last tool calls failed. Do not attempt more tool calls. Tell the user plainly what failed, then stop.")
             continue
         elif args == "__MISSING_ARGS__":
             consecutive_errors += 1
+            issues.append(f"{tool_name}: called without arguments")
             record(working, response, f"[ERROR] Tool call for {tool_name} is missing its <args> block. Provide both <tool> and <args>.")
             if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
                 return final_answer(model, tokenizer, working, full_prompt, streamer, "The last tool calls were malformed. Stop and tell the user plainly what you couldn't do.")
@@ -142,6 +153,7 @@ def run_agent(model, tokenizer, conversation_history, streamer, max_turns=8, can
         if tool_name not in TOOLS:
             tool_result = f"[ERROR] Unknown tool: {tool_name}"
         else:
+            before = capture(tool_name, args) # state before the tool runs for a before/after verification check
             try:
                 tool_result = TOOLS[tool_name](**args)
             except Exception as e:
@@ -149,21 +161,42 @@ def run_agent(model, tokenizer, conversation_history, streamer, max_turns=8, can
 
         tool_result = str(tool_result) # string for the error check 
 
-        if tool_result.startswith("[BLOCKED]"):
+        status = check_output(tool_result) # classify the tool result
+        if status == OK:
+            # check the claim against the real state so the model can't confirm something that didn't happen
+            # verify never raises - a broken verifier comes back UNCHECKED so status stays OK and the guard still resets
+            verdict, detail = verify(tool_name, args, tool_result, before) # verify the tool's claim against the real state after execution
+            if DEBUG:
+                print(f"[VERIFY] {tool_name}: {verdict} - {detail}") # return the verification result to the console for debugging
+            if verdict == FAILED:
+                status = ERROR  # a failed verification counts toward the brute-force guard, same as a tool error
+                issues.append(f"{tool_name}: reported success but verification failed - {detail}")
+            elif verdict == UNCHECKED and tool_name not in READ_ONLY_TOOLS: # only log unverified results for non-read-only tools, since read-only results are the data itself
+                issues.append(f"{tool_name}: ran, but the outcome was not verified - {detail}")
+            if not (verdict == UNCHECKED and tool_name in READ_ONLY_TOOLS):
+                tool_result = annotate(tool_result, verdict, detail) # annotate the result so the model sees the verification outcome
+        elif status == ERROR:
+            issues.append(f"{tool_name}: {tool_result.splitlines()[0][:150]}")
+        elif status == BLOCKED:
+            issues.append(f"{tool_name}: blocked for safety")
+
+        if status == BLOCKED:
             record(working, response, tool_result)
             return final_answer(model, tokenizer, working, full_prompt, streamer, "This action is blocked for safety and cannot be run. Tell the user plainly that it's destructive and you can't execute it, and why.")
-
-        error = tool_result.startswith("[ERROR]") or tool_result.startswith("[BLOCKED]") # check if the tool execution resulted in an error
         
+        if status == ERROR:
+            consecutive_errors += 1 # increment on a real failure
+        elif status == CANCELLED:
+            cancelled_calls += 1 # increment on a cancellation too
+        elif status ==OK:
+            consecutive_errors = 0 # reset on success
+            cancelled_calls = 0 
+
         if tool_name == "tool_help":
             tool_help_calls += 1  # keep track of tool help 
             if tool_help_calls > MAX_TOOL_HELP_CALLS:
                 record(working, response, tool_result)
                 return final_answer(model, tokenizer, working, full_prompt, streamer, "Stop calling tool_help. Use what you know to answer the user directly, or tell the user you can't.")
-        elif tool_result.startswith("[ERROR]"):
-            consecutive_errors += 1 # increment on a real failure
-        else:
-            consecutive_errors = 0 # reset on success
         
         if DEBUG:
             print(f"\n[TOOL] {tool_name}({args})")
@@ -174,6 +207,11 @@ def run_agent(model, tokenizer, conversation_history, streamer, max_turns=8, can
 
         # A simple block to prevent the model from brute forcing instead of admitting failure.
         if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
+            issues.append(f"stopped after {consecutive_errors} failed tool calls in a row")
             return final_answer(model, tokenizer, working, full_prompt, streamer, "The last tool calls failed. Do not attempt more tool calls. Tell the user plainly what failed, then stop.")
 
+        if cancelled_calls >= MAX_CONSECUTIVE_CANCELS:
+            return final_answer(model, tokenizer, working, full_prompt, streamer, "The user declined that action. Do not retry more variants. Acknowledge it plainly and stop.")
+
+    issues.append(f"stopped after reaching the {max_turns} tool call limit")
     return "[ERROR] I got stuck trying to reach a response."

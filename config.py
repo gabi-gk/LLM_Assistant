@@ -14,7 +14,6 @@ TRAINED_MODEL = "./models/marvin"
 # Self-model
 SELF_MODEL_PATH = "data/marvin_data/marvin_self.md"
 SELF_BACKUP_DIR = "data/marvin_data/self_backups"
-MAX_BACKUPS = 3 # how many last snapshots of the self model to keep
 OBSERVATIONS_MARKER ="[OBSERVATIONS]"
 SELF_MODEL_START = "[SELF_MODEL_START]"
 SELF_MODEL_END = "[SELF_MODEL_END]"

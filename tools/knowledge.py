@@ -2,10 +2,11 @@
 Provides tools for searching the rag database by the model if the data is not in it's current context window
 - search personal documents
 - look through past conversation history 
+- ChromaDB stores chunks as the text, the embedding and the metadata
+    - metadata includes the source file path, so we can filter to only show results from a specific directory
 '''
 from pathlib import Path
 from config import DEBUG, INFORMATION_DIR, LOGS_DIR
-from datetime import datetime
 
 rag = None
 

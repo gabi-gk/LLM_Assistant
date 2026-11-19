@@ -22,6 +22,7 @@ class ChatWindow:
         """
         self.on_message = on_message_callback
         self.on_cancel_callback = on_cancel_callback
+        self.pending_notice = None # system note set by on_message, shown after the reply
         self.window = None
         self.input_field = None
         self.chat_display = None
@@ -193,6 +194,7 @@ class ChatWindow:
         user_input — the message string from the user
         """
         self.append_message("System", "Thinking...", "system")
+        self.pending_notice = None
         try:
             response = self.on_message(user_input)
             # Show pure response
@@ -201,9 +203,12 @@ class ChatWindow:
                 return
             if response.startswith("[INTERRUPT]"): # system not Marvin response
                 self.append_message("System", "Request interrupted.", "system")
-                return
+            else:
+                self.append_message("Marvin", response, "ai")
 
-            self.append_message("Marvin", response, "ai")
+            # tool calls that failed or weren't verified, even if the request was interrupted after them
+            if self.pending_notice:
+                self.append_message("System", self.pending_notice, "system")
         except Exception as e:
             self.remove_last_system()
             self.append_message("Error", str(e), "error")

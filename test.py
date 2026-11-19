@@ -1,9 +1,12 @@
-from transformers import AutoTokenizer
-from training.prepare_SFT_data import prepare_sft_dataset
-from training.finetune_sft import preprocess_dataset
+def solution(A):
+    found = False
+    for i in range (1,len(A)+1):
+        print(i)
+        if i in A:
+            found = False
+        else:
+            found = True
+            return i
 
-tokenizer = AutoTokenizer.from_pretrained("./models/marvin_v5")
-dataset = prepare_sft_dataset()
-processed = preprocess_dataset(dataset, tokenizer)
 
-print(repr(processed[0]["text"]))
+print(solution( [2, 3, 1, 5]))

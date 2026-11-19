@@ -10,6 +10,7 @@ from core.model import load_model, create_streamer
 from core.history import compact_history, save_conversation, load_last_session, save_session_state
 from core.rag import RAG
 from agent.loop import run_agent
+from agent.outcomes import format_issues
 from tools.notifications import restore_reminders
 from core.lock import acquire_lock, release_lock
 from tools.knowledge import set_rag
@@ -66,10 +67,14 @@ def run_chat():
     
         # AI response
         print("AI: ", end="", flush=True)
-        reply = run_agent(model, tokenizer, conversation_history, streamer)
-        
+        issues = [] # tool failures to show after the reply
+        reply = run_agent(model, tokenizer, conversation_history, streamer, issues=issues)
+
         conversation_history.append({"role": "assistant", "content": reply})
         print()
+        notice = format_issues(issues)
+        if notice:
+            print(f"[SYSTEM] {notice}")
 
 if __name__ == "__main__":
     acquire_lock()
