@@ -239,6 +239,11 @@ EDIT core/model.py - allow for cancelation mid generation
 01.09.2026
 CREATE agent/outcomes.py - classify the tool call outcomes
 
+19.10.2026
+CREATE Dockerfile - inference image, requirements are installed before the code is copied
+CREATE .dockerignore - exclude folders from the build
+EDIT config.py - BASE_MODEL, TRAINED_MODEL, SERVER_HOST read from env with defaults instead of a set path
+
 27.10.2026
 EDIT agent/outcomes.py - add VERIFIED, FAILED and UNCHECKED verdicts and annotate() so a failed check never reads as a success
 CREATE agent/verification.py - check the tool's claimed outcome against the real state
@@ -258,11 +263,6 @@ CREATE server.py - inference server, model load once at startup, pure inteferenc
 EDIT config.py - add SERVER_HOST,SERVER_ PORT and ensure_dirs()
 EDIT core/history.py, tools/notifications.py - remove makedirs 
   main.py, run.py - call ensure_dirs to create data dir if doesn't exist
-
-19.10.2026
-CREATE Dockerfile - inference image, requirements are installed before the code is copied
-CREATE .dockerignore - exclude folders from the build
-EDIT config.py - BASE_MODEL, TRAINED_MODEL, SERVER_HOST read from env with defaults instead of a set path
 
 KNOWN ISSUES:
 - doesnt execute discord commands properly without help (once finetuned search_conversation_logs can be added again) - to finetune
