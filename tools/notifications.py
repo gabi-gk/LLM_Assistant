@@ -7,7 +7,6 @@ Allows the assistant to send Windows desktop notifiactions
 
 import threading
 import time
-import os
 import json
 import tkinter as tk
 from pathlib import Path
@@ -81,7 +80,7 @@ def save_reminders(reminders_data):
 
     reminders_data: a dict of reminder_id to reminder details (title, message, interval)
     """
-    os.makedirs("./data", exist_ok=True)
+
     with open(REMINDERS_FILE, "w") as f:
         json.dump(reminders_data, f, indent=2)
 

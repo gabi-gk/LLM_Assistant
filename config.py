@@ -1,5 +1,6 @@
 import platform
 from pathlib import Path
+import os
 
 # Logging
 DEBUG = True
@@ -8,8 +9,8 @@ DEBUG = True
 HOTKEY = "alt+space"
 
 # Base model
-BASE_MODEL = "./models/qwen3-8b"
-TRAINED_MODEL = "./models/marvin"
+BASE_MODEL = os.environ.get("BASE_MODEL", "./models/qwen3-8b")
+TRAINED_MODEL = os.environ.get("TRAINED_MODEL", "./models/marvin")
 
 # Self-model
 SELF_MODEL_PATH = "data/marvin_data/marvin_self.md"
@@ -46,6 +47,11 @@ ESCALATION_MINUTES = 2
 # System used
 OS = platform.system()  # "Windows" or "Linux"
 
+# API server
+SERVER_HOST = os.environ.get("SERVER_HOST", "127.0.0.1") # localhost only - the server has no authentication
+#0.0.0.0 for LAN
+SERVER_PORT = 8000
+
 # Disocrd toggle
 DISCORD_ENABLED = True
 
@@ -57,6 +63,17 @@ SEARCH_DIRS = [
     str(Path.home() / "Documents"),
     str(Path.home() / "Desktop"),
     str(Path.home() / "Downloads"),
+]
+
+# created by every entry point so it works on any machine
+RUNTIME_DIRS = [
+    "./data",
+    "data/marvin_data",
+    SELF_BACKUP_DIR,
+    DEFAULT_SAVE_DIR,
+    DEFAULT_CODE_DIR,
+    LOGS_DIR,
+    CHROMA_DIR,
 ]
 
 # Core AI prompt
@@ -131,3 +148,10 @@ Response style:
 - When greeted, respond with a single casual word or short phrase
 - Short is better than long
 """
+
+def ensure_dirs():
+    '''
+    Create every directory at runtime if it doesn't exist yet
+    '''
+    for dir_path in RUNTIME_DIRS:
+        os.makedirs(dir_path, exist_ok=True)

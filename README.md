@@ -48,6 +48,16 @@ Training
 - training can be done using training_combined.py which automatically runs both trainings and combines them into a single final version of the AI
 - When new training data is added, the model is rebuilt from the baseline
 
+SERVER
+- server.py runs the model as an OpenAI-compatible HTTP service
+- it is pure inference only - the self model and tools stay client sided
+- Dockerfile builds an image, mounts the weights at /models so the image can use different models
+- Requires an NVIDIA GPU and nvidia-container-toolkit to host
+- Defaults to localhost (127.0.0.1), can be modified to LAN (0.0.0.0) but there is no authentication so it is not advised
+- To build and run:
+    docker build -t marvin_server .
+    docker run --rm --gpus all -p 8000:8000 -v ./models:/models:ro marvin_server    
+
 Project Structure
     agent/ - the main agent loop and tool definition registry
     core/ - the main functions of the model including RAG
@@ -59,3 +69,4 @@ Project Structure
     run.py - GUI entry point
     main.py - terminal/debug entry point
     config.py - all constants, paths and system prompts
+    server.py - entry point for the server

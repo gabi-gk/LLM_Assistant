@@ -5,7 +5,7 @@ Does not include self model, full history and confirmations
 Use run.py for general use
 '''
 
-from config import COMPACTION_THRESHOLD, COMPACTION_KEEP_RECENT
+from config import COMPACTION_THRESHOLD, COMPACTION_KEEP_RECENT, ensure_dirs
 from core.model import load_model, create_streamer
 from core.history import compact_history, save_conversation, load_last_session, save_session_state
 from core.rag import RAG
@@ -77,6 +77,7 @@ def run_chat():
             print(f"[SYSTEM] {notice}")
 
 if __name__ == "__main__":
+    ensure_dirs() # create any missing directories at runtime
     acquire_lock()
     try:
         run_chat()
