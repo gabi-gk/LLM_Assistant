@@ -4,7 +4,7 @@ Ensures only one instance runts at a time via a lock file then starts the TrayAp
 """
 
 from tray.app import TrayApp
-from core.lock import acquire_lock, release_lock, en
+from core.lock import acquire_lock, release_lock
 from config import ensure_dirs
 
 import os
